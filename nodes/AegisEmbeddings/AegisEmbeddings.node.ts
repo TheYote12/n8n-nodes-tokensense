@@ -1,4 +1,6 @@
 import type {
+	ILoadOptionsFunctions,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
 	ISupplyDataFunctions,
@@ -29,11 +31,7 @@ export class AegisEmbeddings implements INodeType {
 				type: 'options',
 				default: 'text-embedding-3-small',
 				required: true,
-				options: [
-					{ name: 'Text Embedding 3 Small', value: 'text-embedding-3-small' },
-					{ name: 'Text Embedding 3 Large', value: 'text-embedding-3-large' },
-					{ name: 'Text Embedding Ada 002', value: 'text-embedding-ada-002' },
-				],
+				typeOptions: { loadOptionsMethod: 'getEmbeddingModels' },
 			},
 			{
 				displayName: 'Dimensions',
@@ -43,6 +41,34 @@ export class AegisEmbeddings implements INodeType {
 				description: 'Output dimensions (only for text-embedding-3-* models). Leave at 0 for model default.',
 			},
 		],
+	};
+
+	methods = {
+		loadOptions: {
+			async getEmbeddingModels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				try {
+					const credentials = await this.getCredentials('aegisApi');
+					const response = await this.helpers.httpRequest({
+						method: 'GET',
+						url: `${credentials.endpoint as string}/v1/models`,
+						headers: { 'x-aegis-key': credentials.apiKey as string },
+					});
+					const embeddingModels = (response.data as Array<{ id: string }>).filter(
+						(m) => m.id.includes('embedding') || m.id.includes('embed'),
+					);
+					if (embeddingModels.length > 0) {
+						return embeddingModels.map((m) => ({ name: m.id, value: m.id }));
+					}
+					throw new Error('No embedding models found');
+				} catch {
+					return [
+						{ name: 'Text Embedding 3 Small', value: 'text-embedding-3-small' },
+						{ name: 'Text Embedding 3 Large', value: 'text-embedding-3-large' },
+						{ name: 'Text Embedding Ada 002', value: 'text-embedding-ada-002' },
+					];
+				}
+			},
+		},
 	};
 
 	async supplyData(this: ISupplyDataFunctions): Promise<SupplyData> {
