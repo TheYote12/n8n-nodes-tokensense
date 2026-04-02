@@ -1,0 +1,16 @@
+{
+	"node": "n8n-nodes-aegis.aegisAi",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["AI"],
+	"subcategories": {
+		"AI": ["Language Models"]
+	},
+	"resources": {
+		"primaryDocumentation": [
+			{
+				"url": "https://github.com/TheYote12/n8n-nodes-aegis"
+			}
+		]
+	}
+}

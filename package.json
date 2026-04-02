@@ -1,0 +1,41 @@
+{
+	"name": "n8n-nodes-aegis",
+	"version": "0.1.0",
+	"description": "n8n community node for Aegis AI — unified LLM proxy with cost tracking, multi-provider routing, and project management",
+	"keywords": [
+		"n8n-community-node-package"
+	],
+	"license": "MIT",
+	"homepage": "https://github.com/TheYote12/n8n-nodes-aegis",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/TheYote12/n8n-nodes-aegis.git"
+	},
+	"main": "dist/nodes/AegisAi/AegisAi.node.js",
+	"scripts": {
+		"build": "tsc",
+		"prepublishOnly": "npm run build"
+	},
+	"n8n": {
+		"n8nNodesApiVersion": 1,
+		"nodes": [
+			"dist/nodes/AegisAi/AegisAi.node.js",
+			"dist/nodes/AegisChatModel/AegisChatModel.node.js",
+			"dist/nodes/AegisEmbeddings/AegisEmbeddings.node.js"
+		],
+		"credentials": [
+			"dist/credentials/AegisApi.credentials.js"
+		]
+	},
+	"dependencies": {
+		"@langchain/openai": "^0.5.13"
+	},
+	"peerDependencies": {
+		"n8n-workflow": "*"
+	},
+	"devDependencies": {
+		"@types/node": "^20.19.37",
+		"n8n-workflow": "^2.13.1",
+		"typescript": "^5.7.3"
+	}
+}
