@@ -14,7 +14,18 @@
 	"main": "dist/nodes/AegisAi/AegisAi.node.js",
 	"scripts": {
 		"build": "tsc",
-		"prepublishOnly": "npm run build"
+		"prepublishOnly": "npm run build",
+		"test": "jest"
+	},
+	"files": [
+		"dist",
+		"icons",
+		"package.json",
+		"LICENSE",
+		"README.md"
+	],
+	"bugs": {
+		"url": "https://github.com/TheYote12/n8n-nodes-aegis/issues"
 	},
 	"n8n": {
 		"n8nNodesApiVersion": 1,
@@ -34,8 +45,11 @@
 		"n8n-workflow": "*"
 	},
 	"devDependencies": {
+		"@types/jest": "^30.0.0",
 		"@types/node": "^20.19.37",
+		"jest": "^30.3.0",
 		"n8n-workflow": "^2.13.1",
+		"ts-jest": "^29.4.9",
 		"typescript": "^5.7.3"
 	}
 }
