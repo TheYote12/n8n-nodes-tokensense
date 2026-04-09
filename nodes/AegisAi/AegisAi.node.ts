@@ -10,23 +10,23 @@ import FormData from 'form-data';
 
 export class AegisAi implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Aegis AI',
-		name: 'aegisAi',
-		icon: 'file:../../icons/aegis.svg',
+		displayName: 'TokenSense AI',
+		name: 'tokenSenseAi',
+		icon: 'file:../../icons/tokensense.svg',
 		group: ['transform'],
 		version: 1,
-		description: 'Call Aegis AI for chat completions, embeddings, image generation, and more',
-		defaults: { name: 'Aegis AI' },
+		description: 'Call TokenSense for chat completions, embeddings, image generation, and more',
+		defaults: { name: 'TokenSense AI' },
 		codex: {
 			categories: ['AI'],
 			subcategories: { AI: ['Language Models'] },
 			resources: {
-				primaryDocumentation: [{ url: 'https://github.com/TheYote12/n8n-nodes-aegis' }],
+				primaryDocumentation: [{ url: 'https://github.com/TheYote12/n8n-nodes-tokensense' }],
 			},
 		},
 		inputs: ['main'],
 		outputs: ['main'],
-		credentials: [{ name: 'aegisApi', required: true }],
+		credentials: [{ name: 'tokenSenseApi', required: true }],
 		properties: [
 			// ── Operation selector ──
 			{
@@ -106,7 +106,7 @@ export class AegisAi implements INodeType {
 				name: 'project',
 				type: 'string',
 				default: '',
-				description: 'Aegis project name for cost tracking and analytics',
+				description: 'TokenSense project name for cost tracking and analytics',
 				displayOptions: {
 					show: {
 						operation: [
@@ -126,7 +126,7 @@ export class AegisAi implements INodeType {
 				name: 'workflowTag',
 				type: 'string',
 				default: '',
-				description: 'Tag to identify this workflow in Aegis Dashboard',
+				description: 'Tag to identify this workflow in TokenSense Dashboard',
 				displayOptions: {
 					show: {
 						operation: [
@@ -456,11 +456,11 @@ export class AegisAi implements INodeType {
 		loadOptions: {
 			async getModels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				try {
-					const credentials = await this.getCredentials('aegisApi');
+					const credentials = await this.getCredentials('tokenSenseApi');
 					const response = await this.helpers.httpRequest({
 						method: 'GET',
 						url: `${credentials.endpoint as string}/v1/models`,
-						headers: { 'x-aegis-key': credentials.apiKey as string },
+						headers: { 'x-tokensense-key': credentials.apiKey as string },
 					});
 					return (response.data as Array<{ id: string }>).map((m) => ({
 						name: m.id,
@@ -484,7 +484,7 @@ export class AegisAi implements INodeType {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 
-		const credentials = await this.getCredentials('aegisApi');
+		const credentials = await this.getCredentials('tokenSenseApi');
 		const endpoint = credentials.endpoint as string;
 		const apiKey = credentials.apiKey as string;
 
@@ -507,7 +507,7 @@ export class AegisAi implements INodeType {
 				if (systemPrompt) messages.push({ role: 'system', content: systemPrompt });
 				messages.push({ role: 'user', content: userMessage });
 
-				const metadata: Record<string, string> = { source: 'n8n-nodes-aegis' };
+				const metadata: Record<string, string> = { source: 'n8n-nodes-tokensense' };
 				if (workflowTag) metadata.workflow_tag = workflowTag;
 				if (project) metadata.project = project;
 				if (providerOverride && providerOverride !== 'auto') metadata.provider = providerOverride;
@@ -519,7 +519,7 @@ export class AegisAi implements INodeType {
 				const response = await this.helpers.httpRequest({
 					method: 'POST',
 					url: `${endpoint}/v1/chat/completions`,
-					headers: { 'Content-Type': 'application/json', 'x-aegis-key': apiKey },
+					headers: { 'Content-Type': 'application/json', 'x-tokensense-key': apiKey },
 					body,
 					returnFullResponse: true,
 				});
@@ -555,7 +555,7 @@ export class AegisAi implements INodeType {
 				const workflowTag = this.getNodeParameter('workflowTag', i, '') as string;
 				const providerOverride = this.getNodeParameter('providerOverride', i, 'auto') as string;
 
-				const metadata: Record<string, string> = { source: 'n8n-nodes-aegis' };
+				const metadata: Record<string, string> = { source: 'n8n-nodes-tokensense' };
 				if (workflowTag) metadata.workflow_tag = workflowTag;
 				if (project) metadata.project = project;
 				if (providerOverride && providerOverride !== 'auto') metadata.provider = providerOverride;
@@ -565,7 +565,7 @@ export class AegisAi implements INodeType {
 				const response = await this.helpers.httpRequest({
 					method: 'POST',
 					url: `${endpoint}/v1/images/generations`,
-					headers: { 'Content-Type': 'application/json', 'x-aegis-key': apiKey },
+					headers: { 'Content-Type': 'application/json', 'x-tokensense-key': apiKey },
 					body,
 					returnFullResponse: true,
 				});
@@ -593,7 +593,7 @@ export class AegisAi implements INodeType {
 				const project = this.getNodeParameter('project', i, '') as string;
 				const workflowTag = this.getNodeParameter('workflowTag', i, '') as string;
 
-				const metadata: Record<string, string> = { source: 'n8n-nodes-aegis' };
+				const metadata: Record<string, string> = { source: 'n8n-nodes-tokensense' };
 				if (workflowTag) metadata.workflow_tag = workflowTag;
 				if (project) metadata.project = project;
 
@@ -603,7 +603,7 @@ export class AegisAi implements INodeType {
 				const response = await this.helpers.httpRequest({
 					method: 'POST',
 					url: `${endpoint}/v1/embeddings`,
-					headers: { 'Content-Type': 'application/json', 'x-aegis-key': apiKey },
+					headers: { 'Content-Type': 'application/json', 'x-tokensense-key': apiKey },
 					body,
 					returnFullResponse: true,
 				});
@@ -636,7 +636,7 @@ export class AegisAi implements INodeType {
 				const project = this.getNodeParameter('project', i, '') as string;
 				const workflowTag = this.getNodeParameter('workflowTag', i, '') as string;
 
-				const metadata: Record<string, string> = { source: 'n8n-nodes-aegis' };
+				const metadata: Record<string, string> = { source: 'n8n-nodes-tokensense' };
 				if (workflowTag) metadata.workflow_tag = workflowTag;
 				if (project) metadata.project = project;
 
@@ -661,7 +661,7 @@ export class AegisAi implements INodeType {
 				const response = await this.helpers.httpRequest({
 					method: 'POST',
 					url: `${endpoint}/v1/audio/speech`,
-					headers: { 'Content-Type': 'application/json', 'x-aegis-key': apiKey },
+					headers: { 'Content-Type': 'application/json', 'x-tokensense-key': apiKey },
 					body,
 					encoding: 'arraybuffer',
 					returnFullResponse: true,
@@ -695,7 +695,7 @@ export class AegisAi implements INodeType {
 				formBody.append('response_format', responseFormat);
 				if (language) formBody.append('language', language);
 
-				const metadataObj: Record<string, string> = { source: 'n8n-nodes-aegis' };
+				const metadataObj: Record<string, string> = { source: 'n8n-nodes-tokensense' };
 				if (workflowTag) metadataObj.workflow_tag = workflowTag;
 				if (project) metadataObj.project = project;
 				formBody.append('metadata', JSON.stringify(metadataObj));
@@ -703,7 +703,7 @@ export class AegisAi implements INodeType {
 				const response = await this.helpers.httpRequest({
 					method: 'POST',
 					url: `${endpoint}/v1/audio/transcriptions`,
-					headers: { 'x-aegis-key': apiKey, ...formBody.getHeaders() },
+					headers: { 'x-tokensense-key': apiKey, ...formBody.getHeaders() },
 					body: formBody,
 					returnFullResponse: true,
 				});
@@ -730,7 +730,7 @@ export class AegisAi implements INodeType {
 				const project = this.getNodeParameter('project', i, '') as string;
 				const workflowTag = this.getNodeParameter('workflowTag', i, '') as string;
 
-				const metadata: Record<string, string> = { source: 'n8n-nodes-aegis' };
+				const metadata: Record<string, string> = { source: 'n8n-nodes-tokensense' };
 				if (workflowTag) metadata.workflow_tag = workflowTag;
 				if (project) metadata.project = project;
 
@@ -746,7 +746,7 @@ export class AegisAi implements INodeType {
 				const response = await this.helpers.httpRequest({
 					method: 'POST',
 					url: `${endpoint}/v1/messages`,
-					headers: { 'Content-Type': 'application/json', 'x-aegis-key': apiKey },
+					headers: { 'Content-Type': 'application/json', 'x-tokensense-key': apiKey },
 					body,
 					returnFullResponse: true,
 				});
@@ -781,7 +781,7 @@ export class AegisAi implements INodeType {
 				const project = this.getNodeParameter('project', i, '') as string;
 				const workflowTag = this.getNodeParameter('workflowTag', i, '') as string;
 
-				const metadata: Record<string, string> = { source: 'n8n-nodes-aegis' };
+				const metadata: Record<string, string> = { source: 'n8n-nodes-tokensense' };
 				if (workflowTag) metadata.workflow_tag = workflowTag;
 				if (project) metadata.project = project;
 
@@ -828,7 +828,7 @@ export class AegisAi implements INodeType {
 				const response = await this.helpers.httpRequest({
 					method: 'GET',
 					url: `${endpoint}/v1/models`,
-					headers: { 'x-aegis-key': apiKey },
+					headers: { 'x-tokensense-key': apiKey },
 					returnFullResponse: true,
 				});
 

@@ -10,23 +10,23 @@ import { OpenAIEmbeddings } from '@langchain/openai';
 
 export class AegisEmbeddings implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Aegis Embeddings',
-		name: 'aegisEmbeddings',
-		icon: 'file:../../icons/aegis.svg',
+		displayName: 'TokenSense Embeddings',
+		name: 'tokenSenseEmbeddings',
+		icon: 'file:../../icons/tokensense.svg',
 		group: ['transform'],
 		version: 1,
-		description: 'Use Aegis AI for text embeddings in RAG pipelines',
-		defaults: { name: 'Aegis Embeddings' },
+		description: 'Use TokenSense for text embeddings in RAG pipelines',
+		defaults: { name: 'TokenSense Embeddings' },
 		codex: {
 			categories: ['AI'],
 			subcategories: { AI: ['Embeddings'] },
 			resources: {
-				primaryDocumentation: [{ url: 'https://github.com/TheYote12/n8n-nodes-aegis' }],
+				primaryDocumentation: [{ url: 'https://github.com/TheYote12/n8n-nodes-tokensense' }],
 			},
 		},
 		inputs: [],
 		outputs: ['ai_embedding'],
-		credentials: [{ name: 'aegisApi', required: true }],
+		credentials: [{ name: 'tokenSenseApi', required: true }],
 		properties: [
 			{
 				displayName: 'Model',
@@ -50,11 +50,11 @@ export class AegisEmbeddings implements INodeType {
 		loadOptions: {
 			async getEmbeddingModels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				try {
-					const credentials = await this.getCredentials('aegisApi');
+					const credentials = await this.getCredentials('tokenSenseApi');
 					const response = await this.helpers.httpRequest({
 						method: 'GET',
 						url: `${credentials.endpoint as string}/v1/models`,
-						headers: { 'x-aegis-key': credentials.apiKey as string },
+						headers: { 'x-tokensense-key': credentials.apiKey as string },
 					});
 					const embeddingModels = (response.data as Array<{ id: string }>).filter(
 						(m) => m.id.includes('embedding') || m.id.includes('embed'),
@@ -75,7 +75,7 @@ export class AegisEmbeddings implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const credentials = await this.getCredentials('aegisApi');
+		const credentials = await this.getCredentials('tokenSenseApi');
 		const model = this.getNodeParameter('model', itemIndex) as string;
 		const dimensions = this.getNodeParameter('dimensions', itemIndex) as number;
 

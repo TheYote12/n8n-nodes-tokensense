@@ -7,12 +7,12 @@ describe('AegisApi credential', () => {
 		cred = new AegisApi();
 	});
 
-	it('has name "aegisApi"', () => {
-		expect(cred.name).toBe('aegisApi');
+	it('has name "tokenSenseApi"', () => {
+		expect(cred.name).toBe('tokenSenseApi');
 	});
 
-	it('has displayName "Aegis AI API"', () => {
-		expect(cred.displayName).toBe('Aegis AI API');
+	it('has displayName "TokenSense API"', () => {
+		expect(cred.displayName).toBe('TokenSense API');
 	});
 
 	it('defines endpoint and apiKey properties', () => {
@@ -23,7 +23,7 @@ describe('AegisApi credential', () => {
 
 	it('endpoint default is production URL', () => {
 		const endpoint = cred.properties.find((p) => p.name === 'endpoint');
-		expect(endpoint?.default).toBe('https://aegis-core-production-dc6f.up.railway.app');
+		expect(endpoint?.default).toBe('https://api.tokensense.io');
 	});
 
 	it('apiKey is a password field', () => {
@@ -35,7 +35,7 @@ describe('AegisApi credential', () => {
 		expect(cred.test.request.url).toBe('/v1/models');
 	});
 
-	it('test.request sends x-aegis-key header', () => {
-		expect(cred.test.request.headers?.['x-aegis-key']).toBeDefined();
+	it('test.request sends x-tokensense-key header', () => {
+		expect(cred.test.request.headers?.['x-tokensense-key']).toBeDefined();
 	});
 });

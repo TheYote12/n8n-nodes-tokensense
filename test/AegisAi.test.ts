@@ -12,12 +12,12 @@ describe('AegisAi node', () => {
 		return ((operationProp?.options as Array<{ value: string }>) ?? []).map((o) => o.value);
 	};
 
-	it('has displayName "Aegis AI"', () => {
-		expect(node.description.displayName).toBe('Aegis AI');
+	it('has displayName "TokenSense AI"', () => {
+		expect(node.description.displayName).toBe('TokenSense AI');
 	});
 
-	it('has name "aegisAi"', () => {
-		expect(node.description.name).toBe('aegisAi');
+	it('has name "tokenSenseAi"', () => {
+		expect(node.description.name).toBe('tokenSenseAi');
 	});
 
 	it('defines exactly 8 operations', () => {
@@ -75,9 +75,9 @@ describe('AegisAi node', () => {
 		expect(typeof node.execute).toBe('function');
 	});
 
-	it('requires aegisApi credential', () => {
+	it('requires tokenSenseApi credential', () => {
 		const creds = node.description.credentials ?? [];
-		expect(creds.some((c) => c.name === 'aegisApi')).toBe(true);
+		expect(creds.some((c) => c.name === 'tokenSenseApi')).toBe(true);
 	});
 
 	it('has loadOptions.getModels method', () => {
