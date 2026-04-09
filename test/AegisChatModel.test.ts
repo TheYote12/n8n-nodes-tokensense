@@ -7,21 +7,21 @@ describe('AegisChatModel node', () => {
 		node = new AegisChatModel();
 	});
 
-	it('has displayName "Aegis Chat Model"', () => {
-		expect(node.description.displayName).toBe('Aegis Chat Model');
+	it('has displayName "TokenSense Chat Model"', () => {
+		expect(node.description.displayName).toBe('TokenSense Chat Model');
 	});
 
-	it('has name "aegisChatModel"', () => {
-		expect(node.description.name).toBe('aegisChatModel');
+	it('has name "tokenSenseChatModel"', () => {
+		expect(node.description.name).toBe('tokenSenseChatModel');
 	});
 
 	it('outputs ai_languageModel', () => {
 		expect(node.description.outputs as string[]).toContain('ai_languageModel');
 	});
 
-	it('requires aegisApi credential', () => {
+	it('requires tokenSenseApi credential', () => {
 		const creds = node.description.credentials ?? [];
-		expect(creds.some((c) => c.name === 'aegisApi')).toBe(true);
+		expect(creds.some((c) => c.name === 'tokenSenseApi')).toBe(true);
 	});
 
 	it('has model property', () => {

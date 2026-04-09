@@ -7,21 +7,21 @@ describe('AegisEmbeddings node', () => {
 		node = new AegisEmbeddings();
 	});
 
-	it('has displayName "Aegis Embeddings"', () => {
-		expect(node.description.displayName).toBe('Aegis Embeddings');
+	it('has displayName "TokenSense Embeddings"', () => {
+		expect(node.description.displayName).toBe('TokenSense Embeddings');
 	});
 
-	it('has name "aegisEmbeddings"', () => {
-		expect(node.description.name).toBe('aegisEmbeddings');
+	it('has name "tokenSenseEmbeddings"', () => {
+		expect(node.description.name).toBe('tokenSenseEmbeddings');
 	});
 
 	it('outputs ai_embedding', () => {
 		expect(node.description.outputs as string[]).toContain('ai_embedding');
 	});
 
-	it('requires aegisApi credential', () => {
+	it('requires tokenSenseApi credential', () => {
 		const creds = node.description.credentials ?? [];
-		expect(creds.some((c) => c.name === 'aegisApi')).toBe(true);
+		expect(creds.some((c) => c.name === 'tokenSenseApi')).toBe(true);
 	});
 
 	it('has model property', () => {

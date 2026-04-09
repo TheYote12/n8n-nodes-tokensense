@@ -1,7 +1,7 @@
 {
-	"name": "n8n-nodes-aegis",
+	"name": "n8n-nodes-tokensense",
 	"version": "0.1.0",
-	"description": "n8n community node for Aegis AI — unified LLM proxy with cost tracking, multi-provider routing, and project management",
+	"description": "n8n community node for TokenSense — unified LLM proxy with cost tracking, multi-provider routing, and project management",
 	"keywords": [
 		"n8n-community-node-package",
 		"n8n",
@@ -10,15 +10,15 @@
 		"openai",
 		"anthropic",
 		"google",
-		"aegis",
+		"tokensense",
 		"ai-gateway",
 		"proxy"
 	],
 	"license": "MIT",
-	"homepage": "https://github.com/TheYote12/n8n-nodes-aegis",
+	"homepage": "https://github.com/TheYote12/n8n-nodes-tokensense",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/TheYote12/n8n-nodes-aegis.git"
+		"url": "https://github.com/TheYote12/n8n-nodes-tokensense.git"
 	},
 	"main": "dist/nodes/AegisAi/AegisAi.node.js",
 	"scripts": {
@@ -35,7 +35,7 @@
 		"README.md"
 	],
 	"bugs": {
-		"url": "https://github.com/TheYote12/n8n-nodes-aegis/issues"
+		"url": "https://github.com/TheYote12/n8n-nodes-tokensense/issues"
 	},
 	"n8n": {
 		"n8nNodesApiVersion": 1,

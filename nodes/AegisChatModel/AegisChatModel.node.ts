@@ -10,23 +10,23 @@ import { ChatOpenAI } from '@langchain/openai';
 
 export class AegisChatModel implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Aegis Chat Model',
-		name: 'aegisChatModel',
-		icon: 'file:../../icons/aegis.svg',
+		displayName: 'TokenSense Chat Model',
+		name: 'tokenSenseChatModel',
+		icon: 'file:../../icons/tokensense.svg',
 		group: ['transform'],
 		version: 1,
-		description: 'Use Aegis AI as a Chat Model in AI Agent workflows',
-		defaults: { name: 'Aegis Chat Model' },
+		description: 'Use TokenSense as a Chat Model in AI Agent workflows',
+		defaults: { name: 'TokenSense Chat Model' },
 		codex: {
 			categories: ['AI'],
 			subcategories: { AI: ['Language Models', 'Chat Models'] },
 			resources: {
-				primaryDocumentation: [{ url: 'https://github.com/TheYote12/n8n-nodes-aegis' }],
+				primaryDocumentation: [{ url: 'https://github.com/TheYote12/n8n-nodes-tokensense' }],
 			},
 		},
 		inputs: [],
 		outputs: ['ai_languageModel'],
-		credentials: [{ name: 'aegisApi', required: true }],
+		credentials: [{ name: 'tokenSenseApi', required: true }],
 		properties: [
 			{
 				displayName: 'Model',
@@ -63,14 +63,14 @@ export class AegisChatModel implements INodeType {
 				name: 'project',
 				type: 'string',
 				default: '',
-				description: 'Aegis project name for cost tracking and analytics',
+				description: 'TokenSense project name for cost tracking and analytics',
 			},
 			{
 				displayName: 'Workflow Tag',
 				name: 'workflowTag',
 				type: 'string',
 				default: '',
-				description: 'Tag to identify this workflow in Aegis Dashboard',
+				description: 'Tag to identify this workflow in TokenSense Dashboard',
 			},
 			{
 				displayName: 'Provider Override',
@@ -94,11 +94,11 @@ export class AegisChatModel implements INodeType {
 		loadOptions: {
 			async getModels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				try {
-					const credentials = await this.getCredentials('aegisApi');
+					const credentials = await this.getCredentials('tokenSenseApi');
 					const response = await this.helpers.httpRequest({
 						method: 'GET',
 						url: `${credentials.endpoint as string}/v1/models`,
-						headers: { 'x-aegis-key': credentials.apiKey as string },
+						headers: { 'x-tokensense-key': credentials.apiKey as string },
 					});
 					return (response.data as Array<{ id: string }>).map((m) => ({
 						name: m.id,
@@ -119,7 +119,7 @@ export class AegisChatModel implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const credentials = await this.getCredentials('aegisApi');
+		const credentials = await this.getCredentials('tokenSenseApi');
 		const model = this.getNodeParameter('model', itemIndex) as string;
 		const temperature = this.getNodeParameter('temperature', itemIndex) as number;
 		const maxTokens = this.getNodeParameter('maxTokens', itemIndex) as number;
@@ -128,7 +128,7 @@ export class AegisChatModel implements INodeType {
 		const workflowTag = this.getNodeParameter('workflowTag', itemIndex, '') as string;
 		const providerOverride = this.getNodeParameter('providerOverride', itemIndex, 'auto') as string;
 
-		const metadata: Record<string, string> = { source: 'n8n-nodes-aegis' };
+		const metadata: Record<string, string> = { source: 'n8n-nodes-tokensense' };
 		if (workflowTag) metadata.workflow_tag = workflowTag;
 		if (project) metadata.project = project;
 		if (providerOverride && providerOverride !== 'auto') metadata.provider = providerOverride;
