@@ -524,12 +524,11 @@ export class TokenSenseAi implements INodeType {
 					returnFullResponse: true,
 				});
 
-				// NOTE: proxy returns metadata as 'tokensense' (not 'aegis') — Task 1.5 will fix this parsing
 				const responseBody = response.body as {
 					choices?: Array<{ message?: { content?: string; role?: string } }>;
 					model?: string;
 					usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
-					aegis?: { request_id?: string; cost_usd?: number; model?: string; provider?: string; latency_ms?: number; tokens?: { prompt?: number; completion?: number; total?: number } };
+					tokensense?: { request_id?: string; cost_usd?: number; model?: string; provider?: string; latency_ms?: number; tokens?: { prompt?: number; completion?: number; total?: number } };
 				};
 
 				returnData.push({
@@ -538,12 +537,12 @@ export class TokenSenseAi implements INodeType {
 						role: responseBody.choices?.[0]?.message?.role ?? 'assistant',
 						model: responseBody.model ?? model,
 						usage: responseBody.usage ?? {},
-						requestId: responseBody.aegis?.request_id ?? '',
-						cost: String(responseBody.aegis?.cost_usd ?? ''),
-						effectiveModel: responseBody.aegis?.model ?? '',
-						provider: responseBody.aegis?.provider ?? '',
-						latencyMs: responseBody.aegis?.latency_ms ?? null,
-						aegisTokens: responseBody.aegis?.tokens ?? {},
+						requestId: responseBody.tokensense?.request_id ?? '',
+						cost: String(responseBody.tokensense?.cost_usd ?? ''),
+						effectiveModel: responseBody.tokensense?.model ?? '',
+						provider: responseBody.tokensense?.provider ?? '',
+						latencyMs: responseBody.tokensense?.latency_ms ?? null,
+						tokens: responseBody.tokensense?.tokens ?? {},
 					},
 				});
 			} else if (operation === 'generateImage') {
@@ -573,7 +572,7 @@ export class TokenSenseAi implements INodeType {
 
 				const responseBody = response.body as {
 					data?: Array<{ url?: string; revised_prompt?: string }>;
-					aegis?: { request_id?: string; cost_usd?: number; model?: string; provider?: string; latency_ms?: number; tokens?: { prompt?: number; completion?: number; total?: number } };
+					tokensense?: { request_id?: string; cost_usd?: number; model?: string; provider?: string; latency_ms?: number; tokens?: { prompt?: number; completion?: number; total?: number } };
 				};
 
 				const urls = (responseBody.data ?? []).map((img) => img.url ?? '');
@@ -581,10 +580,10 @@ export class TokenSenseAi implements INodeType {
 					json: {
 						urls,
 						data: responseBody.data ?? [],
-						requestId: responseBody.aegis?.request_id ?? '',
-						cost: String(responseBody.aegis?.cost_usd ?? ''),
-						provider: responseBody.aegis?.provider ?? '',
-						latencyMs: responseBody.aegis?.latency_ms ?? null,
+						requestId: responseBody.tokensense?.request_id ?? '',
+						cost: String(responseBody.tokensense?.cost_usd ?? ''),
+						provider: responseBody.tokensense?.provider ?? '',
+						latencyMs: responseBody.tokensense?.latency_ms ?? null,
 					},
 				});
 			} else if (operation === 'createEmbedding') {
@@ -613,7 +612,7 @@ export class TokenSenseAi implements INodeType {
 					data?: Array<{ embedding?: number[] }>;
 					model?: string;
 					usage?: { prompt_tokens?: number; total_tokens?: number };
-					aegis?: { request_id?: string; cost_usd?: number; model?: string; provider?: string; latency_ms?: number; tokens?: { prompt?: number; completion?: number; total?: number } };
+					tokensense?: { request_id?: string; cost_usd?: number; model?: string; provider?: string; latency_ms?: number; tokens?: { prompt?: number; completion?: number; total?: number } };
 				};
 
 				returnData.push({
@@ -621,11 +620,11 @@ export class TokenSenseAi implements INodeType {
 						embedding: responseBody.data?.[0]?.embedding ?? [],
 						model: responseBody.model ?? model,
 						usage: responseBody.usage ?? {},
-						requestId: responseBody.aegis?.request_id ?? '',
-						cost: String(responseBody.aegis?.cost_usd ?? ''),
-						provider: responseBody.aegis?.provider ?? '',
-						latencyMs: responseBody.aegis?.latency_ms ?? null,
-						aegisTokens: responseBody.aegis?.tokens ?? {},
+						requestId: responseBody.tokensense?.request_id ?? '',
+						cost: String(responseBody.tokensense?.cost_usd ?? ''),
+						provider: responseBody.tokensense?.provider ?? '',
+						latencyMs: responseBody.tokensense?.latency_ms ?? null,
+						tokens: responseBody.tokensense?.tokens ?? {},
 					},
 				});
 			} else if (operation === 'textToSpeech') {
@@ -709,17 +708,17 @@ export class TokenSenseAi implements INodeType {
 					returnFullResponse: true,
 				});
 
-				const responseBody = response.body as { text?: string; aegis?: { request_id?: string; cost_usd?: number; model?: string; provider?: string; latency_ms?: number } } | string;
+				const responseBody = response.body as { text?: string; tokensense?: { request_id?: string; cost_usd?: number; model?: string; provider?: string; latency_ms?: number } } | string;
 
 				const text = typeof responseBody === 'string' ? responseBody : (responseBody.text ?? '');
-				const aegis = typeof responseBody === 'string' ? undefined : responseBody.aegis;
+				const meta = typeof responseBody === 'string' ? undefined : responseBody.tokensense;
 				returnData.push({
 					json: {
 						text,
-						requestId: aegis?.request_id ?? '',
-						cost: String(aegis?.cost_usd ?? ''),
-						provider: aegis?.provider ?? '',
-						latencyMs: aegis?.latency_ms ?? null,
+						requestId: meta?.request_id ?? '',
+						cost: String(meta?.cost_usd ?? ''),
+						provider: meta?.provider ?? '',
+						latencyMs: meta?.latency_ms ?? null,
 					},
 				});
 			} else if (operation === 'nativeAnthropic') {
@@ -757,7 +756,7 @@ export class TokenSenseAi implements INodeType {
 					model?: string;
 					usage?: { input_tokens?: number; output_tokens?: number };
 					stop_reason?: string;
-					aegis?: { request_id?: string; cost_usd?: number; model?: string; provider?: string; latency_ms?: number; tokens?: { prompt?: number; completion?: number; total?: number } };
+					tokensense?: { request_id?: string; cost_usd?: number; model?: string; provider?: string; latency_ms?: number; tokens?: { prompt?: number; completion?: number; total?: number } };
 				};
 
 				returnData.push({
@@ -766,11 +765,11 @@ export class TokenSenseAi implements INodeType {
 						model: responseBody.model ?? model,
 						usage: responseBody.usage ?? {},
 						stopReason: responseBody.stop_reason ?? '',
-						requestId: responseBody.aegis?.request_id ?? '',
-						cost: String(responseBody.aegis?.cost_usd ?? ''),
-						provider: responseBody.aegis?.provider ?? '',
-						latencyMs: responseBody.aegis?.latency_ms ?? null,
-						aegisTokens: responseBody.aegis?.tokens ?? {},
+						requestId: responseBody.tokensense?.request_id ?? '',
+						cost: String(responseBody.tokensense?.cost_usd ?? ''),
+						provider: responseBody.tokensense?.provider ?? '',
+						latencyMs: responseBody.tokensense?.latency_ms ?? null,
+						tokens: responseBody.tokensense?.tokens ?? {},
 					},
 				});
 			} else if (operation === 'nativeGemini') {
@@ -811,18 +810,19 @@ export class TokenSenseAi implements INodeType {
 						content?: { parts?: Array<{ text?: string }> };
 					}>;
 					usageMetadata?: Record<string, unknown>;
-					aegis?: { request_id?: string; cost_usd?: number; model?: string; provider?: string; latency_ms?: number; tokens?: { prompt?: number; completion?: number; total?: number } };
 				};
+				const responseHeaders = response.headers as Record<string, string>;
 
 				returnData.push({
 					json: {
 						content: responseBody.candidates?.[0]?.content?.parts?.[0]?.text ?? '',
 						usageMetadata: responseBody.usageMetadata ?? {},
-						requestId: responseBody.aegis?.request_id ?? '',
-						cost: String(responseBody.aegis?.cost_usd ?? ''),
-						provider: responseBody.aegis?.provider ?? '',
-						latencyMs: responseBody.aegis?.latency_ms ?? null,
-						aegisTokens: responseBody.aegis?.tokens ?? {},
+						requestId: responseHeaders['x-tokensense-request-id'] ?? '',
+						cost: responseHeaders['x-tokensense-cost'] ?? '',
+						provider: 'google',
+						model: responseHeaders['x-tokensense-model'] ?? '',
+						latencyMs: null,
+						tokens: {},
 					},
 				});
 			} else if (operation === 'listModels') {
