@@ -524,7 +524,7 @@ export class TokenSenseAi implements INodeType {
 					returnFullResponse: true,
 				});
 
-				// TODO: rename when proxy updates response field from 'aegis' to 'tokensense'
+				// NOTE: proxy returns metadata as 'tokensense' (not 'aegis') — Task 1.5 will fix this parsing
 				const responseBody = response.body as {
 					choices?: Array<{ message?: { content?: string; role?: string } }>;
 					model?: string;
