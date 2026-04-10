@@ -70,7 +70,7 @@ export class TokenSenseChatModel implements INodeType {
 				name: 'workflowTag',
 				type: 'string',
 				default: '',
-				description: 'Tag to identify this workflow in TokenSense Dashboard',
+				description: 'Tag to identify this workflow in TokenSense Dashboard. Auto-detected from workflow name if left empty.',
 			},
 			{
 				displayName: 'Provider Override',
@@ -128,8 +128,10 @@ export class TokenSenseChatModel implements INodeType {
 		const workflowTag = this.getNodeParameter('workflowTag', itemIndex, '') as string;
 		const providerOverride = this.getNodeParameter('providerOverride', itemIndex, 'auto') as string;
 
+		const effectiveTag = workflowTag || this.getWorkflow().name || '';
+
 		const metadata: Record<string, string> = { source: 'n8n-nodes-tokensense' };
-		if (workflowTag) metadata.workflow_tag = workflowTag;
+		if (effectiveTag) metadata.workflow_tag = effectiveTag;
 		if (project) metadata.project = project;
 		if (providerOverride && providerOverride !== 'auto') metadata.provider = providerOverride;
 

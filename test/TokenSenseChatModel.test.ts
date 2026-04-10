@@ -59,6 +59,11 @@ describe('TokenSenseChatModel node', () => {
 		expect(names).toContain('providerOverride');
 	});
 
+	it('workflowTag description mentions auto-detection', () => {
+		const prop = node.description.properties.find((p) => p.name === 'workflowTag');
+		expect(prop?.description).toMatch(/auto/i);
+	});
+
 	it('has supplyData method', () => {
 		expect(typeof node.supplyData).toBe('function');
 	});

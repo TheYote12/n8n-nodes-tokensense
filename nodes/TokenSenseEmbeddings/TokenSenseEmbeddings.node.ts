@@ -43,6 +43,32 @@ export class TokenSenseEmbeddings implements INodeType {
 				default: 0,
 				description: 'Output dimensions (only for text-embedding-3-* models). Leave at 0 for model default.',
 			},
+			{
+				displayName: 'Project',
+				name: 'project',
+				type: 'string',
+				default: '',
+				description: 'TokenSense project name for cost tracking and analytics',
+			},
+			{
+				displayName: 'Workflow Tag',
+				name: 'workflowTag',
+				type: 'string',
+				default: '',
+				description: 'Tag to identify this workflow in TokenSense Dashboard. Auto-detected from workflow name if left empty.',
+			},
+			{
+				displayName: 'Provider Override',
+				name: 'providerOverride',
+				type: 'options',
+				default: 'auto',
+				description: 'Force a specific provider instead of automatic routing',
+				options: [
+					{ name: 'Auto', value: 'auto' },
+					{ name: 'OpenAI', value: 'openai' },
+					{ name: 'Google', value: 'google' },
+				],
+			},
 		],
 	};
 
@@ -78,6 +104,30 @@ export class TokenSenseEmbeddings implements INodeType {
 		const credentials = await this.getCredentials('tokenSenseApi');
 		const model = this.getNodeParameter('model', itemIndex) as string;
 		const dimensions = this.getNodeParameter('dimensions', itemIndex) as number;
+		const project = this.getNodeParameter('project', itemIndex, '') as string;
+		const workflowTag = this.getNodeParameter('workflowTag', itemIndex, '') as string;
+		const providerOverride = this.getNodeParameter('providerOverride', itemIndex, 'auto') as string;
+
+		const effectiveTag = workflowTag || this.getWorkflow().name || '';
+
+		const metadata: Record<string, string> = { source: 'n8n-nodes-tokensense' };
+		if (effectiveTag) metadata.workflow_tag = effectiveTag;
+		if (project) metadata.project = project;
+		if (providerOverride && providerOverride !== 'auto') metadata.provider = providerOverride;
+
+		const nativeFetch = globalThis.fetch;
+		const metadataInjectingFetch: typeof globalThis.fetch = async (url, init) => {
+			if (init?.body && typeof init.body === 'string') {
+				try {
+					const body = JSON.parse(init.body);
+					body.metadata = metadata;
+					init = { ...init, body: JSON.stringify(body) };
+				} catch {
+					// non-JSON body, pass through
+				}
+			}
+			return nativeFetch(url, init);
+		};
 
 		const embeddings = new OpenAIEmbeddings({
 			model,
@@ -85,6 +135,7 @@ export class TokenSenseEmbeddings implements INodeType {
 			configuration: {
 				baseURL: `${credentials.endpoint as string}/v1`,
 				apiKey: credentials.apiKey as string,
+				fetch: metadataInjectingFetch,
 			},
 		});
 

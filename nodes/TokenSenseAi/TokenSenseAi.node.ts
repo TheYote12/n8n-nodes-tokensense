@@ -126,7 +126,7 @@ export class TokenSenseAi implements INodeType {
 				name: 'workflowTag',
 				type: 'string',
 				default: '',
-				description: 'Tag to identify this workflow in TokenSense Dashboard',
+				description: 'Tag to identify this workflow in TokenSense Dashboard. Auto-detected from workflow name if left empty.',
 				displayOptions: {
 					show: {
 						operation: [
@@ -491,6 +491,10 @@ export class TokenSenseAi implements INodeType {
 		for (let i = 0; i < items.length; i++) {
 			try {
 			const operation = this.getNodeParameter('operation', i) as string;
+			const getEffectiveTag = (idx: number): string => {
+				const manual = this.getNodeParameter('workflowTag', idx, '') as string;
+				return manual || this.getWorkflow().name || '';
+			};
 
 			if (operation === 'chatCompletion') {
 				const model = this.getNodeParameter('model', i) as string;
@@ -500,7 +504,7 @@ export class TokenSenseAi implements INodeType {
 				const maxTokens = this.getNodeParameter('maxTokens', i) as number;
 				const jsonMode = this.getNodeParameter('jsonMode', i) as boolean;
 				const project = this.getNodeParameter('project', i, '') as string;
-				const workflowTag = this.getNodeParameter('workflowTag', i, '') as string;
+				const workflowTag = getEffectiveTag(i);
 				const providerOverride = this.getNodeParameter('providerOverride', i, 'auto') as string;
 
 				const messages: Array<{ role: string; content: string }> = [];
@@ -524,12 +528,11 @@ export class TokenSenseAi implements INodeType {
 					returnFullResponse: true,
 				});
 
-				// NOTE: proxy returns metadata as 'tokensense' (not 'aegis') — Task 1.5 will fix this parsing
 				const responseBody = response.body as {
 					choices?: Array<{ message?: { content?: string; role?: string } }>;
 					model?: string;
 					usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
-					aegis?: { request_id?: string; cost_usd?: number; model?: string; provider?: string; latency_ms?: number; tokens?: { prompt?: number; completion?: number; total?: number } };
+					tokensense?: { request_id?: string; cost_usd?: number; model?: string; provider?: string; latency_ms?: number; tokens?: { prompt?: number; completion?: number; total?: number } };
 				};
 
 				returnData.push({
@@ -538,12 +541,12 @@ export class TokenSenseAi implements INodeType {
 						role: responseBody.choices?.[0]?.message?.role ?? 'assistant',
 						model: responseBody.model ?? model,
 						usage: responseBody.usage ?? {},
-						requestId: responseBody.aegis?.request_id ?? '',
-						cost: String(responseBody.aegis?.cost_usd ?? ''),
-						effectiveModel: responseBody.aegis?.model ?? '',
-						provider: responseBody.aegis?.provider ?? '',
-						latencyMs: responseBody.aegis?.latency_ms ?? null,
-						aegisTokens: responseBody.aegis?.tokens ?? {},
+						requestId: responseBody.tokensense?.request_id ?? '',
+						cost: String(responseBody.tokensense?.cost_usd ?? ''),
+						effectiveModel: responseBody.tokensense?.model ?? '',
+						provider: responseBody.tokensense?.provider ?? '',
+						latencyMs: responseBody.tokensense?.latency_ms ?? null,
+						tokens: responseBody.tokensense?.tokens ?? {},
 					},
 				});
 			} else if (operation === 'generateImage') {
@@ -553,7 +556,7 @@ export class TokenSenseAi implements INodeType {
 				const quality = this.getNodeParameter('imageQuality', i) as string;
 				const n = this.getNodeParameter('imageCount', i) as number;
 				const project = this.getNodeParameter('project', i, '') as string;
-				const workflowTag = this.getNodeParameter('workflowTag', i, '') as string;
+				const workflowTag = getEffectiveTag(i);
 				const providerOverride = this.getNodeParameter('providerOverride', i, 'auto') as string;
 
 				const metadata: Record<string, string> = { source: 'n8n-nodes-tokensense' };
@@ -573,7 +576,7 @@ export class TokenSenseAi implements INodeType {
 
 				const responseBody = response.body as {
 					data?: Array<{ url?: string; revised_prompt?: string }>;
-					aegis?: { request_id?: string; cost_usd?: number; model?: string; provider?: string; latency_ms?: number; tokens?: { prompt?: number; completion?: number; total?: number } };
+					tokensense?: { request_id?: string; cost_usd?: number; model?: string; provider?: string; latency_ms?: number; tokens?: { prompt?: number; completion?: number; total?: number } };
 				};
 
 				const urls = (responseBody.data ?? []).map((img) => img.url ?? '');
@@ -581,10 +584,10 @@ export class TokenSenseAi implements INodeType {
 					json: {
 						urls,
 						data: responseBody.data ?? [],
-						requestId: responseBody.aegis?.request_id ?? '',
-						cost: String(responseBody.aegis?.cost_usd ?? ''),
-						provider: responseBody.aegis?.provider ?? '',
-						latencyMs: responseBody.aegis?.latency_ms ?? null,
+						requestId: responseBody.tokensense?.request_id ?? '',
+						cost: String(responseBody.tokensense?.cost_usd ?? ''),
+						provider: responseBody.tokensense?.provider ?? '',
+						latencyMs: responseBody.tokensense?.latency_ms ?? null,
 					},
 				});
 			} else if (operation === 'createEmbedding') {
@@ -592,7 +595,7 @@ export class TokenSenseAi implements INodeType {
 				const model = this.getNodeParameter('embeddingModel', i) as string;
 				const dimensions = this.getNodeParameter('embeddingDimensions', i) as number;
 				const project = this.getNodeParameter('project', i, '') as string;
-				const workflowTag = this.getNodeParameter('workflowTag', i, '') as string;
+				const workflowTag = getEffectiveTag(i);
 
 				const metadata: Record<string, string> = { source: 'n8n-nodes-tokensense' };
 				if (workflowTag) metadata.workflow_tag = workflowTag;
@@ -613,7 +616,7 @@ export class TokenSenseAi implements INodeType {
 					data?: Array<{ embedding?: number[] }>;
 					model?: string;
 					usage?: { prompt_tokens?: number; total_tokens?: number };
-					aegis?: { request_id?: string; cost_usd?: number; model?: string; provider?: string; latency_ms?: number; tokens?: { prompt?: number; completion?: number; total?: number } };
+					tokensense?: { request_id?: string; cost_usd?: number; model?: string; provider?: string; latency_ms?: number; tokens?: { prompt?: number; completion?: number; total?: number } };
 				};
 
 				returnData.push({
@@ -621,11 +624,11 @@ export class TokenSenseAi implements INodeType {
 						embedding: responseBody.data?.[0]?.embedding ?? [],
 						model: responseBody.model ?? model,
 						usage: responseBody.usage ?? {},
-						requestId: responseBody.aegis?.request_id ?? '',
-						cost: String(responseBody.aegis?.cost_usd ?? ''),
-						provider: responseBody.aegis?.provider ?? '',
-						latencyMs: responseBody.aegis?.latency_ms ?? null,
-						aegisTokens: responseBody.aegis?.tokens ?? {},
+						requestId: responseBody.tokensense?.request_id ?? '',
+						cost: String(responseBody.tokensense?.cost_usd ?? ''),
+						provider: responseBody.tokensense?.provider ?? '',
+						latencyMs: responseBody.tokensense?.latency_ms ?? null,
+						tokens: responseBody.tokensense?.tokens ?? {},
 					},
 				});
 			} else if (operation === 'textToSpeech') {
@@ -635,7 +638,7 @@ export class TokenSenseAi implements INodeType {
 				const responseFormat = this.getNodeParameter('ttsFormat', i) as string;
 				const speed = this.getNodeParameter('ttsSpeed', i) as number;
 				const project = this.getNodeParameter('project', i, '') as string;
-				const workflowTag = this.getNodeParameter('workflowTag', i, '') as string;
+				const workflowTag = getEffectiveTag(i);
 
 				const metadata: Record<string, string> = { source: 'n8n-nodes-tokensense' };
 				if (workflowTag) metadata.workflow_tag = workflowTag;
@@ -683,7 +686,7 @@ export class TokenSenseAi implements INodeType {
 				const language = this.getNodeParameter('sttLanguage', i, '') as string;
 				const responseFormat = this.getNodeParameter('sttFormat', i) as string;
 				const project = this.getNodeParameter('project', i, '') as string;
-				const workflowTag = this.getNodeParameter('workflowTag', i, '') as string;
+				const workflowTag = getEffectiveTag(i);
 
 				const binaryBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 				const binaryMeta = items[i].binary?.[binaryPropertyName];
@@ -709,17 +712,17 @@ export class TokenSenseAi implements INodeType {
 					returnFullResponse: true,
 				});
 
-				const responseBody = response.body as { text?: string; aegis?: { request_id?: string; cost_usd?: number; model?: string; provider?: string; latency_ms?: number } } | string;
+				const responseBody = response.body as { text?: string; tokensense?: { request_id?: string; cost_usd?: number; model?: string; provider?: string; latency_ms?: number } } | string;
 
 				const text = typeof responseBody === 'string' ? responseBody : (responseBody.text ?? '');
-				const aegis = typeof responseBody === 'string' ? undefined : responseBody.aegis;
+				const meta = typeof responseBody === 'string' ? undefined : responseBody.tokensense;
 				returnData.push({
 					json: {
 						text,
-						requestId: aegis?.request_id ?? '',
-						cost: String(aegis?.cost_usd ?? ''),
-						provider: aegis?.provider ?? '',
-						latencyMs: aegis?.latency_ms ?? null,
+						requestId: meta?.request_id ?? '',
+						cost: String(meta?.cost_usd ?? ''),
+						provider: meta?.provider ?? '',
+						latencyMs: meta?.latency_ms ?? null,
 					},
 				});
 			} else if (operation === 'nativeAnthropic') {
@@ -729,7 +732,7 @@ export class TokenSenseAi implements INodeType {
 				const maxTokens = this.getNodeParameter('anthropicMaxTokens', i) as number;
 				const temperature = this.getNodeParameter('anthropicTemperature', i) as number;
 				const project = this.getNodeParameter('project', i, '') as string;
-				const workflowTag = this.getNodeParameter('workflowTag', i, '') as string;
+				const workflowTag = getEffectiveTag(i);
 
 				const metadata: Record<string, string> = { source: 'n8n-nodes-tokensense' };
 				if (workflowTag) metadata.workflow_tag = workflowTag;
@@ -757,7 +760,7 @@ export class TokenSenseAi implements INodeType {
 					model?: string;
 					usage?: { input_tokens?: number; output_tokens?: number };
 					stop_reason?: string;
-					aegis?: { request_id?: string; cost_usd?: number; model?: string; provider?: string; latency_ms?: number; tokens?: { prompt?: number; completion?: number; total?: number } };
+					tokensense?: { request_id?: string; cost_usd?: number; model?: string; provider?: string; latency_ms?: number; tokens?: { prompt?: number; completion?: number; total?: number } };
 				};
 
 				returnData.push({
@@ -766,11 +769,11 @@ export class TokenSenseAi implements INodeType {
 						model: responseBody.model ?? model,
 						usage: responseBody.usage ?? {},
 						stopReason: responseBody.stop_reason ?? '',
-						requestId: responseBody.aegis?.request_id ?? '',
-						cost: String(responseBody.aegis?.cost_usd ?? ''),
-						provider: responseBody.aegis?.provider ?? '',
-						latencyMs: responseBody.aegis?.latency_ms ?? null,
-						aegisTokens: responseBody.aegis?.tokens ?? {},
+						requestId: responseBody.tokensense?.request_id ?? '',
+						cost: String(responseBody.tokensense?.cost_usd ?? ''),
+						provider: responseBody.tokensense?.provider ?? '',
+						latencyMs: responseBody.tokensense?.latency_ms ?? null,
+						tokens: responseBody.tokensense?.tokens ?? {},
 					},
 				});
 			} else if (operation === 'nativeGemini') {
@@ -780,7 +783,7 @@ export class TokenSenseAi implements INodeType {
 				const temperature = this.getNodeParameter('geminiTemperature', i) as number;
 				const maxOutputTokens = this.getNodeParameter('geminiMaxOutputTokens', i) as number;
 				const project = this.getNodeParameter('project', i, '') as string;
-				const workflowTag = this.getNodeParameter('workflowTag', i, '') as string;
+				const workflowTag = getEffectiveTag(i);
 
 				const metadata: Record<string, string> = { source: 'n8n-nodes-tokensense' };
 				if (workflowTag) metadata.workflow_tag = workflowTag;
@@ -800,8 +803,8 @@ export class TokenSenseAi implements INodeType {
 
 				const response = await this.helpers.httpRequest({
 					method: 'POST',
-					url: `${endpoint}/v1beta/models/${model}:generateContent?key=${apiKey}`,
-					headers: { 'Content-Type': 'application/json' },
+					url: `${endpoint}/v1beta/models/${model}:generateContent`,
+					headers: { 'Content-Type': 'application/json', 'x-tokensense-key': apiKey },
 					body,
 					returnFullResponse: true,
 				});
@@ -811,18 +814,19 @@ export class TokenSenseAi implements INodeType {
 						content?: { parts?: Array<{ text?: string }> };
 					}>;
 					usageMetadata?: Record<string, unknown>;
-					aegis?: { request_id?: string; cost_usd?: number; model?: string; provider?: string; latency_ms?: number; tokens?: { prompt?: number; completion?: number; total?: number } };
 				};
+				const responseHeaders = response.headers as Record<string, string>;
 
 				returnData.push({
 					json: {
 						content: responseBody.candidates?.[0]?.content?.parts?.[0]?.text ?? '',
 						usageMetadata: responseBody.usageMetadata ?? {},
-						requestId: responseBody.aegis?.request_id ?? '',
-						cost: String(responseBody.aegis?.cost_usd ?? ''),
-						provider: responseBody.aegis?.provider ?? '',
-						latencyMs: responseBody.aegis?.latency_ms ?? null,
-						aegisTokens: responseBody.aegis?.tokens ?? {},
+						requestId: responseHeaders['x-tokensense-request-id'] ?? '',
+						cost: responseHeaders['x-tokensense-cost'] ?? '',
+						provider: 'google',
+						model: responseHeaders['x-tokensense-model'] ?? '',
+						latencyMs: null,
+						tokens: {},
 					},
 				});
 			} else if (operation === 'listModels') {
