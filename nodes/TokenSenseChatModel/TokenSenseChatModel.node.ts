@@ -7,6 +7,7 @@ import type {
 	SupplyData,
 } from 'n8n-workflow';
 import { ChatOpenAI } from '@langchain/openai';
+import { buildMetadata, loadModels } from '../../shared/utils';
 
 export class TokenSenseChatModel implements INodeType {
 	description: INodeTypeDescription = {
@@ -93,27 +94,7 @@ export class TokenSenseChatModel implements INodeType {
 	methods = {
 		loadOptions: {
 			async getModels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				try {
-					const credentials = await this.getCredentials('tokenSenseApi');
-					const response = await this.helpers.httpRequest({
-						method: 'GET',
-						url: `${credentials.endpoint as string}/v1/models`,
-						headers: { 'x-tokensense-key': credentials.apiKey as string },
-					});
-					return (response.data as Array<{ id: string }>).map((m) => ({
-						name: m.id,
-						value: m.id,
-					}));
-				} catch {
-					return [
-						{ name: 'GPT-4o', value: 'gpt-4o' },
-						{ name: 'GPT-4o Mini', value: 'gpt-4o-mini' },
-						{ name: 'Claude Sonnet 4.5', value: 'claude-sonnet-4-5-20250929' },
-						{ name: 'Claude Haiku 3.5', value: 'claude-haiku-3-5-20241022' },
-						{ name: 'Gemini 2.0 Flash', value: 'gemini-2.0-flash' },
-						{ name: 'GPT-5.4', value: 'gpt-5.4' },
-					];
-				}
+				return loadModels.call(this);
 			},
 		},
 	};
@@ -124,16 +105,8 @@ export class TokenSenseChatModel implements INodeType {
 		const temperature = this.getNodeParameter('temperature', itemIndex) as number;
 		const maxTokens = this.getNodeParameter('maxTokens', itemIndex) as number;
 		const streaming = this.getNodeParameter('streaming', itemIndex, true) as boolean;
-		const project = this.getNodeParameter('project', itemIndex, '') as string;
-		const workflowTag = this.getNodeParameter('workflowTag', itemIndex, '') as string;
-		const providerOverride = this.getNodeParameter('providerOverride', itemIndex, 'auto') as string;
 
-		const effectiveTag = workflowTag || this.getWorkflow().name || '';
-
-		const metadata: Record<string, string> = { source: 'n8n-nodes-tokensense' };
-		if (effectiveTag) metadata.workflow_tag = effectiveTag;
-		if (project) metadata.project = project;
-		if (providerOverride && providerOverride !== 'auto') metadata.provider = providerOverride;
+		const metadata = buildMetadata(this, itemIndex, { includeProvider: true });
 
 		const chatModel = new ChatOpenAI({
 			model,

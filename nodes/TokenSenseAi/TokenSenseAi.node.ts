@@ -7,6 +7,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import FormData from 'form-data';
+import { buildMetadata, loadModels } from '../../shared/utils';
 
 export class TokenSenseAi implements INodeType {
 	description: INodeTypeDescription = {
@@ -455,27 +456,7 @@ export class TokenSenseAi implements INodeType {
 	methods = {
 		loadOptions: {
 			async getModels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				try {
-					const credentials = await this.getCredentials('tokenSenseApi');
-					const response = await this.helpers.httpRequest({
-						method: 'GET',
-						url: `${credentials.endpoint as string}/v1/models`,
-						headers: { 'x-tokensense-key': credentials.apiKey as string },
-					});
-					return (response.data as Array<{ id: string }>).map((m) => ({
-						name: m.id,
-						value: m.id,
-					}));
-				} catch {
-					return [
-						{ name: 'GPT-4o', value: 'gpt-4o' },
-						{ name: 'GPT-4o Mini', value: 'gpt-4o-mini' },
-						{ name: 'Claude Sonnet 4.5', value: 'claude-sonnet-4-5-20250929' },
-						{ name: 'Claude Haiku 3.5', value: 'claude-haiku-3-5-20241022' },
-						{ name: 'Gemini 2.0 Flash', value: 'gemini-2.0-flash' },
-						{ name: 'GPT-5.4', value: 'gpt-5.4' },
-					];
-				}
+				return loadModels.call(this);
 			},
 		},
 	};
@@ -491,10 +472,6 @@ export class TokenSenseAi implements INodeType {
 		for (let i = 0; i < items.length; i++) {
 			try {
 			const operation = this.getNodeParameter('operation', i) as string;
-			const getEffectiveTag = (idx: number): string => {
-				const manual = this.getNodeParameter('workflowTag', idx, '') as string;
-				return manual || this.getWorkflow().name || '';
-			};
 
 			if (operation === 'chatCompletion') {
 				const model = this.getNodeParameter('model', i) as string;
@@ -503,18 +480,12 @@ export class TokenSenseAi implements INodeType {
 				const temperature = this.getNodeParameter('temperature', i) as number;
 				const maxTokens = this.getNodeParameter('maxTokens', i) as number;
 				const jsonMode = this.getNodeParameter('jsonMode', i) as boolean;
-				const project = this.getNodeParameter('project', i, '') as string;
-				const workflowTag = getEffectiveTag(i);
-				const providerOverride = this.getNodeParameter('providerOverride', i, 'auto') as string;
 
 				const messages: Array<{ role: string; content: string }> = [];
 				if (systemPrompt) messages.push({ role: 'system', content: systemPrompt });
 				messages.push({ role: 'user', content: userMessage });
 
-				const metadata: Record<string, string> = { source: 'n8n-nodes-tokensense' };
-				if (workflowTag) metadata.workflow_tag = workflowTag;
-				if (project) metadata.project = project;
-				if (providerOverride && providerOverride !== 'auto') metadata.provider = providerOverride;
+				const metadata = buildMetadata(this, i, { includeProvider: true });
 
 				const body: Record<string, unknown> = { model, messages, temperature, metadata };
 				if (maxTokens > 0) body.max_tokens = maxTokens;
@@ -555,14 +526,8 @@ export class TokenSenseAi implements INodeType {
 				const size = this.getNodeParameter('imageSize', i) as string;
 				const quality = this.getNodeParameter('imageQuality', i) as string;
 				const n = this.getNodeParameter('imageCount', i) as number;
-				const project = this.getNodeParameter('project', i, '') as string;
-				const workflowTag = getEffectiveTag(i);
-				const providerOverride = this.getNodeParameter('providerOverride', i, 'auto') as string;
 
-				const metadata: Record<string, string> = { source: 'n8n-nodes-tokensense' };
-				if (workflowTag) metadata.workflow_tag = workflowTag;
-				if (project) metadata.project = project;
-				if (providerOverride && providerOverride !== 'auto') metadata.provider = providerOverride;
+				const metadata = buildMetadata(this, i, { includeProvider: true });
 
 				const body: Record<string, unknown> = { prompt, model, size, quality, n, metadata };
 
@@ -594,12 +559,8 @@ export class TokenSenseAi implements INodeType {
 				const input = this.getNodeParameter('embeddingInput', i) as string;
 				const model = this.getNodeParameter('embeddingModel', i) as string;
 				const dimensions = this.getNodeParameter('embeddingDimensions', i) as number;
-				const project = this.getNodeParameter('project', i, '') as string;
-				const workflowTag = getEffectiveTag(i);
 
-				const metadata: Record<string, string> = { source: 'n8n-nodes-tokensense' };
-				if (workflowTag) metadata.workflow_tag = workflowTag;
-				if (project) metadata.project = project;
+				const metadata = buildMetadata(this, i);
 
 				const body: Record<string, unknown> = { input, model, metadata };
 				if (dimensions > 0) body.dimensions = dimensions;
@@ -637,12 +598,8 @@ export class TokenSenseAi implements INodeType {
 				const voice = this.getNodeParameter('ttsVoice', i) as string;
 				const responseFormat = this.getNodeParameter('ttsFormat', i) as string;
 				const speed = this.getNodeParameter('ttsSpeed', i) as number;
-				const project = this.getNodeParameter('project', i, '') as string;
-				const workflowTag = getEffectiveTag(i);
 
-				const metadata: Record<string, string> = { source: 'n8n-nodes-tokensense' };
-				if (workflowTag) metadata.workflow_tag = workflowTag;
-				if (project) metadata.project = project;
+				const metadata = buildMetadata(this, i);
 
 				const body: Record<string, unknown> = {
 					input,
@@ -685,24 +642,19 @@ export class TokenSenseAi implements INodeType {
 				const model = this.getNodeParameter('sttModel', i) as string;
 				const language = this.getNodeParameter('sttLanguage', i, '') as string;
 				const responseFormat = this.getNodeParameter('sttFormat', i) as string;
-				const project = this.getNodeParameter('project', i, '') as string;
-				const workflowTag = getEffectiveTag(i);
-
 				const binaryBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 				const binaryMeta = items[i].binary?.[binaryPropertyName];
 				const fileName = binaryMeta?.fileName ?? 'audio.wav';
 				const mimeType = binaryMeta?.mimeType ?? 'audio/wav';
+
+				const metadata = buildMetadata(this, i);
 
 				const formBody = new FormData();
 				formBody.append('file', Buffer.from(binaryBuffer), { filename: fileName, contentType: mimeType });
 				formBody.append('model', model);
 				formBody.append('response_format', responseFormat);
 				if (language) formBody.append('language', language);
-
-				const metadataObj: Record<string, string> = { source: 'n8n-nodes-tokensense' };
-				if (workflowTag) metadataObj.workflow_tag = workflowTag;
-				if (project) metadataObj.project = project;
-				formBody.append('metadata', JSON.stringify(metadataObj));
+				formBody.append('metadata', JSON.stringify(metadata));
 
 				const response = await this.helpers.httpRequest({
 					method: 'POST',
@@ -731,12 +683,8 @@ export class TokenSenseAi implements INodeType {
 				const userMessage = this.getNodeParameter('anthropicUserMessage', i) as string;
 				const maxTokens = this.getNodeParameter('anthropicMaxTokens', i) as number;
 				const temperature = this.getNodeParameter('anthropicTemperature', i) as number;
-				const project = this.getNodeParameter('project', i, '') as string;
-				const workflowTag = getEffectiveTag(i);
 
-				const metadata: Record<string, string> = { source: 'n8n-nodes-tokensense' };
-				if (workflowTag) metadata.workflow_tag = workflowTag;
-				if (project) metadata.project = project;
+				const metadata = buildMetadata(this, i);
 
 				const body: Record<string, unknown> = {
 					model,
@@ -782,12 +730,8 @@ export class TokenSenseAi implements INodeType {
 				const systemInstruction = this.getNodeParameter('geminiSystemInstruction', i, '') as string;
 				const temperature = this.getNodeParameter('geminiTemperature', i) as number;
 				const maxOutputTokens = this.getNodeParameter('geminiMaxOutputTokens', i) as number;
-				const project = this.getNodeParameter('project', i, '') as string;
-				const workflowTag = getEffectiveTag(i);
 
-				const metadata: Record<string, string> = { source: 'n8n-nodes-tokensense' };
-				if (workflowTag) metadata.workflow_tag = workflowTag;
-				if (project) metadata.project = project;
+				const metadata = buildMetadata(this, i);
 
 				const generationConfig: Record<string, unknown> = { temperature };
 				if (maxOutputTokens > 0) generationConfig.maxOutputTokens = maxOutputTokens;

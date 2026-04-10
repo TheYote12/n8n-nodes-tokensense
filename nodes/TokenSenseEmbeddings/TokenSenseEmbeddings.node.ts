@@ -7,6 +7,13 @@ import type {
 	SupplyData,
 } from 'n8n-workflow';
 import { OpenAIEmbeddings } from '@langchain/openai';
+import { buildMetadata, loadModels } from '../../shared/utils';
+
+const EMBEDDING_FALLBACK: INodePropertyOptions[] = [
+	{ name: 'Text Embedding 3 Small', value: 'text-embedding-3-small' },
+	{ name: 'Text Embedding 3 Large', value: 'text-embedding-3-large' },
+	{ name: 'Text Embedding Ada 002', value: 'text-embedding-ada-002' },
+];
 
 export class TokenSenseEmbeddings implements INodeType {
 	description: INodeTypeDescription = {
@@ -75,27 +82,11 @@ export class TokenSenseEmbeddings implements INodeType {
 	methods = {
 		loadOptions: {
 			async getEmbeddingModels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				try {
-					const credentials = await this.getCredentials('tokenSenseApi');
-					const response = await this.helpers.httpRequest({
-						method: 'GET',
-						url: `${credentials.endpoint as string}/v1/models`,
-						headers: { 'x-tokensense-key': credentials.apiKey as string },
-					});
-					const embeddingModels = (response.data as Array<{ id: string }>).filter(
-						(m) => m.id.includes('embedding') || m.id.includes('embed'),
-					);
-					if (embeddingModels.length > 0) {
-						return embeddingModels.map((m) => ({ name: m.id, value: m.id }));
-					}
-					throw new Error('No embedding models found');
-				} catch {
-					return [
-						{ name: 'Text Embedding 3 Small', value: 'text-embedding-3-small' },
-						{ name: 'Text Embedding 3 Large', value: 'text-embedding-3-large' },
-						{ name: 'Text Embedding Ada 002', value: 'text-embedding-ada-002' },
-					];
-				}
+				return loadModels.call(
+					this,
+					(id) => id.includes('embedding') || id.includes('embed'),
+					EMBEDDING_FALLBACK,
+				);
 			},
 		},
 	};
@@ -104,16 +95,8 @@ export class TokenSenseEmbeddings implements INodeType {
 		const credentials = await this.getCredentials('tokenSenseApi');
 		const model = this.getNodeParameter('model', itemIndex) as string;
 		const dimensions = this.getNodeParameter('dimensions', itemIndex) as number;
-		const project = this.getNodeParameter('project', itemIndex, '') as string;
-		const workflowTag = this.getNodeParameter('workflowTag', itemIndex, '') as string;
-		const providerOverride = this.getNodeParameter('providerOverride', itemIndex, 'auto') as string;
 
-		const effectiveTag = workflowTag || this.getWorkflow().name || '';
-
-		const metadata: Record<string, string> = { source: 'n8n-nodes-tokensense' };
-		if (effectiveTag) metadata.workflow_tag = effectiveTag;
-		if (project) metadata.project = project;
-		if (providerOverride && providerOverride !== 'auto') metadata.provider = providerOverride;
+		const metadata = buildMetadata(this, itemIndex, { includeProvider: true });
 
 		const nativeFetch = globalThis.fetch;
 		const metadataInjectingFetch: typeof globalThis.fetch = async (url, init) => {
