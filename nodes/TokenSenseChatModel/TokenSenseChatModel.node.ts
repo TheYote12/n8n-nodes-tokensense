@@ -6,8 +6,8 @@ import type {
 	ISupplyDataFunctions,
 	SupplyData,
 } from 'n8n-workflow';
-import { ChatOpenAI } from '@langchain/openai';
-import { buildMetadata, loadModels } from '../../shared/utils';
+import { supplyModel } from '@n8n/ai-node-sdk';
+import { buildMetadata, loadModels, normalizeBaseUrl } from '../../shared/utils';
 
 export class TokenSenseChatModel implements INodeType {
 	description: INodeTypeDescription = {
@@ -30,11 +30,13 @@ export class TokenSenseChatModel implements INodeType {
 		credentials: [{ name: 'tokenSenseApi', required: true }],
 		properties: [
 			{
-				displayName: 'Model',
+				displayName: 'Model Name or ID',
 				name: 'model',
 				type: 'options',
 				default: 'gpt-4o',
 				required: true,
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				typeOptions: { loadOptionsMethod: 'getModels' },
 			},
 			{
@@ -80,12 +82,12 @@ export class TokenSenseChatModel implements INodeType {
 				default: 'auto',
 				description: 'Force a specific provider instead of automatic routing',
 				options: [
-					{ name: 'Auto', value: 'auto' },
-					{ name: 'OpenAI', value: 'openai' },
 					{ name: 'Anthropic', value: 'anthropic' },
+					{ name: 'Auto', value: 'auto' },
 					{ name: 'Google', value: 'google' },
-					{ name: 'xAI', value: 'xai' },
 					{ name: 'Mistral', value: 'mistral' },
+					{ name: 'OpenAI', value: 'openai' },
+					{ name: 'xAI', value: 'xai' },
 				],
 			},
 		],
@@ -107,20 +109,18 @@ export class TokenSenseChatModel implements INodeType {
 		const streaming = this.getNodeParameter('streaming', itemIndex, true) as boolean;
 
 		const metadata = buildMetadata(this, itemIndex, { includeProvider: true });
+		const baseUrl = `${normalizeBaseUrl(credentials.endpoint as string)}/v1`;
 
-		const chatModel = new ChatOpenAI({
+		return supplyModel(this, {
+			type: 'openai',
+			baseUrl,
 			model,
+			apiKey: credentials.apiKey as string,
 			temperature,
 			streaming,
 			...(maxTokens > 0 ? { maxTokens } : {}),
-			configuration: {
-				baseURL: `${credentials.endpoint as string}/v1`,
-				apiKey: credentials.apiKey as string,
-			},
-			modelKwargs: { metadata },
+			additionalParams: { metadata },
 		});
-
-		return { response: chatModel };
 	}
 }
 
