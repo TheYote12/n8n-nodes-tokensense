@@ -1,0 +1,92 @@
+name: npm maintenance ops
+# Run npm write operations (deprecate, dist-tag) from CI instead of a laptop.
+# Uses NPM_TOKEN (automation-scoped) which bypasses the account's 2FA OTP
+# requirement on writes. Every invocation is logged as an Actions run URL
+# for audit.
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: "Operation: deprecate | undeprecate | dist-tag-add | dist-tag-rm"
+        required: true
+        type: choice
+        options:
+          - deprecate
+          - undeprecate
+          - dist-tag-add
+          - dist-tag-rm
+      version:
+        description: "Version target (e.g. 0.1.0-beta.1). Required for deprecate, undeprecate, dist-tag-add. Ignored for dist-tag-rm."
+        required: false
+        default: ''
+      message_or_tag:
+        description: "For deprecate: the deprecation message. For dist-tag-add/rm: the tag name (e.g. 'latest', 'beta')."
+        required: false
+        default: ''
+jobs:
+  maintain:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+      - name: Run npm op
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          PKG: n8n-nodes-tokensense
+          OP: ${{ github.event.inputs.operation }}
+          VERSION: ${{ github.event.inputs.version }}
+          EXTRA: ${{ github.event.inputs.message_or_tag }}
+        run: |
+          set -euo pipefail
+          echo "## npm maintenance: $OP" >> "$GITHUB_STEP_SUMMARY"
+          echo "- package: \`$PKG\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- version: \`${VERSION:-<n/a>}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- extra:   \`${EXTRA:-<n/a>}\`" >> "$GITHUB_STEP_SUMMARY"
+          case "$OP" in
+            deprecate)
+              if [ -z "$VERSION" ] || [ -z "$EXTRA" ]; then
+                echo "::error::deprecate requires both version and message_or_tag (message)"
+                exit 1
+              fi
+              npm deprecate "$PKG@$VERSION" "$EXTRA"
+              ;;
+            undeprecate)
+              if [ -z "$VERSION" ]; then
+                echo "::error::undeprecate requires version"
+                exit 1
+              fi
+              npm deprecate "$PKG@$VERSION" ""
+              ;;
+            dist-tag-add)
+              if [ -z "$VERSION" ] || [ -z "$EXTRA" ]; then
+                echo "::error::dist-tag-add requires both version and message_or_tag (tag name)"
+                exit 1
+              fi
+              npm dist-tag add "$PKG@$VERSION" "$EXTRA"
+              ;;
+            dist-tag-rm)
+              if [ -z "$EXTRA" ]; then
+                echo "::error::dist-tag-rm requires message_or_tag (tag name)"
+                exit 1
+              fi
+              npm dist-tag rm "$PKG" "$EXTRA"
+              ;;
+            *)
+              echo "::error::unknown operation: $OP"
+              exit 1
+              ;;
+          esac
+      - name: Post-op registry state
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          PKG: n8n-nodes-tokensense
+        run: |
+          echo "### Registry state after op" >> "$GITHUB_STEP_SUMMARY"
+          echo "\`\`\`json" >> "$GITHUB_STEP_SUMMARY"
+          npm view "$PKG" dist-tags --json >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "\`\`\`" >> "$GITHUB_STEP_SUMMARY"
