@@ -44,8 +44,7 @@
 		"n8nNodesApiVersion": 1,
 		"nodes": [
 			"dist/nodes/TokenSenseAi/TokenSenseAi.node.js",
-			"dist/nodes/TokenSenseChatModel/TokenSenseChatModel.node.js",
-			"dist/nodes/TokenSenseEmbeddings/TokenSenseEmbeddings.node.js"
+			"dist/nodes/TokenSenseChatModel/TokenSenseChatModel.node.js"
 		],
 		"credentials": [
 			"dist/credentials/TokenSenseApi.credentials.js"
