@@ -35,7 +35,16 @@ describe('TokenSenseApi credential', () => {
 		expect(cred.test.request.url).toBe('/v1/models');
 	});
 
-	it('test.request sends x-tokensense-key header', () => {
-		expect(cred.test.request.headers?.['x-tokensense-key']).toBeDefined();
+	it('authenticate block injects x-tokensense-key header from credential expression', () => {
+		const headers = cred.authenticate.properties.headers as Record<string, string>;
+		expect(headers['x-tokensense-key']).toBe('={{$credentials.apiKey}}');
+	});
+
+	it('endpoint property has a bare-origin regex validator', () => {
+		const endpoint = cred.properties.find((p) => p.name === 'endpoint');
+		const pattern = (endpoint?.typeOptions as { regexp?: { regex?: string } })?.regexp?.regex;
+		expect(pattern).toBeDefined();
+		expect(new RegExp(pattern as string).test('https://api.tokensense.io')).toBe(true);
+		expect(new RegExp(pattern as string).test('https://api.tokensense.io/v1')).toBe(false);
 	});
 });

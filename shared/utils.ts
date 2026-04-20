@@ -84,12 +84,17 @@ export async function loadModels(
 ): Promise<INodePropertyOptions[]> {
 	try {
 		const credentials = await this.getCredentials('tokenSenseApi');
-		const response = await this.helpers.httpRequest({
-			method: 'GET',
-			url: `${credentials.endpoint as string}/v1/models`,
-			headers: { 'x-tokensense-key': credentials.apiKey as string },
-		});
-		let models = response.data as Array<{ id: string }>;
+		const baseUrl = normalizeBaseUrl(credentials.endpoint as string);
+		const response = await this.helpers.httpRequestWithAuthentication.call(
+			this,
+			'tokenSenseApi',
+			{
+				method: 'GET',
+				baseURL: baseUrl,
+				url: '/v1/models',
+			},
+		);
+		let models = (response as { data?: Array<{ id: string }> }).data ?? [];
 		if (filter) {
 			const filtered = models.filter((m) => filter(m.id));
 			if (filtered.length === 0) throw new Error('No models matched filter');

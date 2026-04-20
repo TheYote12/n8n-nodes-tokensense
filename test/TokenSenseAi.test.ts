@@ -1,5 +1,5 @@
 import { TokenSenseAi } from '../nodes/TokenSenseAi/TokenSenseAi.node';
-import type { IExecuteFunctions } from 'n8n-workflow';
+import type { IExecuteFunctions, IHttpRequestOptions } from 'n8n-workflow';
 
 describe('TokenSenseAi node', () => {
 	let node: TokenSenseAi;
@@ -57,6 +57,10 @@ describe('TokenSenseAi node', () => {
 		expect(getOperationValues(node)).toContain('listModels');
 	});
 
+	it('is usable as an AI Agent tool', () => {
+		expect(node.description.usableAsTool).toBe(true);
+	});
+
 	it('chatCompletion model property has displayOptions configured', () => {
 		const modelProp = node.description.properties.find(
 			(p) => p.name === 'model' && p.displayOptions?.show?.operation,
@@ -90,23 +94,164 @@ describe('TokenSenseAi node', () => {
 		expect(typeof node.methods?.loadOptions?.getModels).toBe('function');
 	});
 
-	describe('nativeGemini operation', () => {
-		it('sends API key in header, not URL query param', async () => {
-			let capturedUrl = '';
-			let capturedHeaders: Record<string, string> = {};
+	/**
+	 * Build a mock IExecuteFunctions whose httpRequestWithAuthentication captures
+	 * every call into `captured` and returns the supplied response.
+	 *
+	 * Sprint 2 contract:
+	 *  - Node code MUST call `helpers.httpRequestWithAuthentication` (NOT `httpRequest`)
+	 *    so n8n injects the x-tokensense-key header from the credential authenticate block.
+	 *  - Node code MUST NOT pass a manual `x-tokensense-key` or `Authorization` header.
+	 *  - For JSON ops the code MUST pass `returnFullResponse: true` and read `.body`.
+	 */
+	const buildMockContext = (
+		params: Record<string, unknown>,
+		response: unknown,
+		captured: {
+			credentialName?: string;
+			opts?: IHttpRequestOptions;
+		},
+	): IExecuteFunctions => {
+		const mockFn = function (credentialName: string, opts: IHttpRequestOptions): Promise<unknown> {
+			captured.credentialName = credentialName;
+			captured.opts = opts;
+			return Promise.resolve(response);
+		};
+		return {
+			getInputData: () => [{ json: {} }],
+			getNodeParameter: (name: string) => params[name] ?? '',
+			getCredentials: async () => ({
+				endpoint: 'https://api.tokensense.io',
+				apiKey: 'test-secret-key',
+			}),
+			getWorkflow: () => ({ name: 'Test Workflow', id: '123', active: true }),
+			continueOnFail: () => false,
+			helpers: {
+				httpRequestWithAuthentication: mockFn,
+			},
+		} as unknown as IExecuteFunctions;
+	};
 
-			const mockContext = {
-				getInputData: () => [{ json: {} }],
+	describe('auth contract (Sprint 2 refactor)', () => {
+		it('chatCompletion delegates auth to n8n credential system', async () => {
+			const captured: { credentialName?: string; opts?: IHttpRequestOptions } = {};
+			const ctx = buildMockContext(
+				{
+					operation: 'chatCompletion',
+					model: 'gpt-4o',
+					userMessage: 'hello',
+					temperature: 0.7,
+					maxTokens: 0,
+					jsonMode: false,
+					providerOverride: 'auto',
+				},
+				{
+					body: {
+						choices: [{ message: { content: 'hi', role: 'assistant' } }],
+						model: 'gpt-4o',
+						usage: {},
+						tokensense: { request_id: 'r', cost_usd: 0, provider: 'openai' },
+					},
+					headers: {},
+					statusCode: 200,
+				},
+				captured,
+			);
+
+			await node.execute.call(ctx);
+
+			expect(captured.credentialName).toBe('tokenSenseApi');
+			const opts = captured.opts!;
+			// Must go through httpRequestWithAuthentication, not embed the key
+			const headers = (opts.headers ?? {}) as Record<string, string>;
+			expect(headers['x-tokensense-key']).toBeUndefined();
+			expect(headers.Authorization).toBeUndefined();
+			expect(headers.authorization).toBeUndefined();
+			// URL must not contain the secret
+			const fullUrl = `${opts.baseURL ?? ''}${opts.url ?? ''}`;
+			expect(fullUrl).not.toContain('test-secret-key');
+			expect(fullUrl).not.toContain('key=');
+			// Body contract: returnFullResponse must be set so node can read .body
+			expect(opts.returnFullResponse).toBe(true);
+		});
+
+		it('nativeGemini sends key via credential header, not URL query param', async () => {
+			const captured: { credentialName?: string; opts?: IHttpRequestOptions } = {};
+			const ctx = buildMockContext(
+				{
+					operation: 'nativeGemini',
+					geminiModel: 'gemini-2.0-flash',
+					geminiUserMessage: 'hello',
+					geminiSystemInstruction: '',
+					geminiTemperature: 1.0,
+					geminiMaxOutputTokens: 0,
+				},
+				{
+					body: { candidates: [{ content: { parts: [{ text: 'hi' }] } }] },
+					headers: {},
+					statusCode: 200,
+				},
+				captured,
+			);
+
+			await node.execute.call(ctx);
+
+			const opts = captured.opts!;
+			const fullUrl = `${opts.baseURL ?? ''}${opts.url ?? ''}`;
+			expect(fullUrl).not.toContain('key=');
+			expect(fullUrl).not.toContain('test-secret-key');
+			const headers = (opts.headers ?? {}) as Record<string, string>;
+			expect(headers['x-tokensense-key']).toBeUndefined();
+			expect(captured.credentialName).toBe('tokenSenseApi');
+		});
+
+		it('nativeAnthropic uses credential helper and reads .body', async () => {
+			const captured: { credentialName?: string; opts?: IHttpRequestOptions } = {};
+			const ctx = buildMockContext(
+				{
+					operation: 'nativeAnthropic',
+					anthropicModel: 'claude-sonnet-4-5-20250929',
+					anthropicUserMessage: 'hi',
+					anthropicSystemPrompt: '',
+					anthropicMaxTokens: 1024,
+				},
+				{
+					body: { content: [{ text: 'hello', type: 'text' }] },
+					headers: { 'x-tokensense-request-id': 'req_a', 'x-tokensense-cost': '0.001' },
+					statusCode: 200,
+				},
+				captured,
+			);
+
+			await node.execute.call(ctx);
+
+			expect(captured.credentialName).toBe('tokenSenseApi');
+			expect(captured.opts!.returnFullResponse).toBe(true);
+			expect(captured.opts!.url).toBe('/v1/messages');
+		});
+
+		it('transcribeAudio uses n8n built-in multipart (no form-data package)', async () => {
+			const captured: { credentialName?: string; opts?: IHttpRequestOptions } = {};
+			const ctx = {
+				getInputData: () => [
+					{
+						json: {},
+						binary: {
+							data: {
+								data: Buffer.from('fake-audio').toString('base64'),
+								mimeType: 'audio/mp3',
+								fileName: 'a.mp3',
+							},
+						},
+					},
+				],
 				getNodeParameter: (name: string) => {
 					const params: Record<string, unknown> = {
-						operation: 'nativeGemini',
-						geminiModel: 'gemini-2.0-flash',
-						geminiUserMessage: 'hello',
-						geminiSystemInstruction: '',
-						geminiTemperature: 1.0,
-						geminiMaxOutputTokens: 0,
-						project: '',
-						workflowTag: '',
+						operation: 'transcribeAudio',
+						binaryPropertyName: 'data',
+						sttModel: 'whisper-1',
+						sttLanguage: '',
+						sttFormat: 'json',
 					};
 					return params[name] ?? '';
 				},
@@ -117,64 +262,65 @@ describe('TokenSenseAi node', () => {
 				getWorkflow: () => ({ name: 'Test Workflow', id: '123', active: true }),
 				continueOnFail: () => false,
 				helpers: {
-					httpRequest: async (opts: { url: string; headers: Record<string, string> }) => {
-						capturedUrl = opts.url;
-						capturedHeaders = opts.headers;
-						return {
-							body: { candidates: [{ content: { parts: [{ text: 'hi' }] } }] },
+					httpRequestWithAuthentication: function (
+						credentialName: string,
+						opts: IHttpRequestOptions,
+					) {
+						captured.credentialName = credentialName;
+						captured.opts = opts;
+						return Promise.resolve({
+							body: { text: 'transcribed' },
 							headers: {},
 							statusCode: 200,
-						};
+						});
 					},
+					getBinaryDataBuffer: async () => Buffer.from('fake-audio'),
 				},
 			} as unknown as IExecuteFunctions;
 
-			await node.execute.call(mockContext);
+			await node.execute.call(ctx);
 
-			expect(capturedUrl).not.toContain('key=');
-			expect(capturedUrl).not.toContain('test-secret-key');
-			expect(capturedHeaders['x-tokensense-key']).toBe('test-secret-key');
+			const opts = captured.opts!;
+			const headers = (opts.headers ?? {}) as Record<string, string>;
+			expect(headers['Content-Type']).toBe('multipart/form-data');
+			const body = opts.body as Record<string, unknown>;
+			expect(body).toBeDefined();
+			expect(body.file).toBeDefined();
+			// n8n multipart shape: { value, options: { filename, contentType } }
+			expect((body.file as { options: { filename: string } }).options.filename).toBe('a.mp3');
+			expect(body.model).toBe('whisper-1');
+			expect(opts.returnFullResponse).toBe(true);
 		});
+	});
 
+	describe('nativeGemini metadata parsing', () => {
 		it('reads metadata from response headers (not body)', async () => {
-			const mockContext = {
-				getInputData: () => [{ json: {} }],
-				getNodeParameter: (name: string) => {
-					const params: Record<string, unknown> = {
-						operation: 'nativeGemini',
-						geminiModel: 'gemini-2.0-flash',
-						geminiUserMessage: 'hello',
-						geminiSystemInstruction: '',
-						geminiTemperature: 1.0,
-						geminiMaxOutputTokens: 0,
-						project: '',
-						workflowTag: '',
-					};
-					return params[name] ?? '';
+			const captured: { credentialName?: string; opts?: IHttpRequestOptions } = {};
+			const ctx = buildMockContext(
+				{
+					operation: 'nativeGemini',
+					geminiModel: 'gemini-2.0-flash',
+					geminiUserMessage: 'hello',
+					geminiSystemInstruction: '',
+					geminiTemperature: 1.0,
+					geminiMaxOutputTokens: 0,
 				},
-				getCredentials: async () => ({
-					endpoint: 'https://api.tokensense.io',
-					apiKey: 'test-key',
-				}),
-				getWorkflow: () => ({ name: 'Test Workflow', id: '123', active: true }),
-				continueOnFail: () => false,
-				helpers: {
-					httpRequest: async () => ({
-						body: {
-							candidates: [{ content: { parts: [{ text: 'response' }] } }],
-							usageMetadata: { promptTokenCount: 5 },
-						},
-						headers: {
-							'x-tokensense-request-id': 'req_abc',
-							'x-tokensense-cost': '0.001',
-							'x-tokensense-model': 'gemini-2.0-flash',
-						},
-						statusCode: 200,
-					}),
+				{
+					body: {
+						candidates: [{ content: { parts: [{ text: 'response' }] } }],
+						usageMetadata: { promptTokenCount: 5 },
+					},
+					headers: {
+						'x-tokensense-request-id': 'req_abc',
+						'x-tokensense-cost': '0.001',
+						'x-tokensense-model': 'gemini-2.0-flash',
+					},
+					statusCode: 200,
 				},
-			} as unknown as IExecuteFunctions;
+				captured,
+			);
 
-			const result = await node.execute.call(mockContext);
+			const result = await node.execute.call(ctx);
 			const output = result[0][0].json;
 
 			expect(output.requestId).toBe('req_abc');
@@ -186,51 +332,41 @@ describe('TokenSenseAi node', () => {
 
 	describe('chatCompletion metadata parsing', () => {
 		it('reads metadata from tokensense field in response body', async () => {
-			const mockContext = {
-				getInputData: () => [{ json: {} }],
-				getNodeParameter: (name: string) => {
-					const params: Record<string, unknown> = {
-						operation: 'chatCompletion',
+			const captured: { credentialName?: string; opts?: IHttpRequestOptions } = {};
+			const ctx = buildMockContext(
+				{
+					operation: 'chatCompletion',
+					model: 'gpt-4o',
+					systemPrompt: '',
+					userMessage: 'hello',
+					temperature: 0.7,
+					maxTokens: 0,
+					jsonMode: false,
+					project: 'myproject',
+					workflowTag: '',
+					providerOverride: 'auto',
+				},
+				{
+					body: {
+						choices: [{ message: { content: 'hi', role: 'assistant' } }],
 						model: 'gpt-4o',
-						systemPrompt: '',
-						userMessage: 'hello',
-						temperature: 0.7,
-						maxTokens: 0,
-						jsonMode: false,
-						project: 'myproject',
-						workflowTag: '',
-						providerOverride: 'auto',
-					};
-					return params[name] ?? '';
-				},
-				getCredentials: async () => ({
-					endpoint: 'https://api.tokensense.io',
-					apiKey: 'test-key',
-				}),
-				getWorkflow: () => ({ name: 'Test Workflow', id: '123', active: true }),
-				continueOnFail: () => false,
-				helpers: {
-					httpRequest: async () => ({
-						body: {
-							choices: [{ message: { content: 'hi', role: 'assistant' } }],
+						usage: { prompt_tokens: 10, completion_tokens: 5 },
+						tokensense: {
+							request_id: 'req_xyz',
+							cost_usd: 0.002,
 							model: 'gpt-4o',
-							usage: { prompt_tokens: 10, completion_tokens: 5 },
-							tokensense: {
-								request_id: 'req_xyz',
-								cost_usd: 0.002,
-								model: 'gpt-4o',
-								provider: 'openai',
-								latency_ms: 300,
-								tokens: { prompt: 10, completion: 5, total: 15 },
-							},
+							provider: 'openai',
+							latency_ms: 300,
+							tokens: { prompt: 10, completion: 5, total: 15 },
 						},
-						headers: {},
-						statusCode: 200,
-					}),
+					},
+					headers: {},
+					statusCode: 200,
 				},
-			} as unknown as IExecuteFunctions;
+				captured,
+			);
 
-			const result = await node.execute.call(mockContext);
+			const result = await node.execute.call(ctx);
 			const output = result[0][0].json;
 
 			expect(output.requestId).toBe('req_xyz');
