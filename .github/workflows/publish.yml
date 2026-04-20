@@ -3,6 +3,12 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      dist_tag_override:
+        description: "Override auto-detected dist-tag (leave blank to auto-detect from version)"
+        required: false
+        default: ''
 jobs:
   publish:
     runs-on: ubuntu-latest
@@ -18,6 +24,30 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm test
-      - run: npm publish --provenance --access public
+      - name: Determine dist-tag
+        id: disttag
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          OVERRIDE="${{ github.event.inputs.dist_tag_override }}"
+          if [ -n "$OVERRIDE" ]; then
+            TAG="$OVERRIDE"
+            echo "Using override dist-tag: $TAG"
+          elif [[ "$VERSION" == *"-"* ]]; then
+            PRERELEASE_ID=$(echo "$VERSION" | sed -E 's/^[0-9]+\.[0-9]+\.[0-9]+-([a-zA-Z]+).*$/\1/')
+            TAG="${PRERELEASE_ID:-beta}"
+            echo "Pre-release version $VERSION detected, using dist-tag: $TAG"
+          else
+            TAG="latest"
+            echo "Stable version $VERSION, using dist-tag: $TAG"
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+      - run: npm publish --provenance --access public --tag ${{ steps.disttag.outputs.tag }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Publish summary
+        run: |
+          echo "## Published n8n-nodes-tokensense@${{ steps.disttag.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **dist-tag:** \`${{ steps.disttag.outputs.tag }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Install:** \`npm install n8n-nodes-tokensense@${{ steps.disttag.outputs.tag }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Provenance:** attested via GitHub OIDC" >> $GITHUB_STEP_SUMMARY
