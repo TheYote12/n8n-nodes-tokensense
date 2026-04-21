@@ -1,6 +1,6 @@
 {
 	"name": "n8n-nodes-tokensense",
-	"version": "0.1.0-beta.2",
+	"version": "0.1.0-beta.3",
 	"description": "n8n community node for TokenSense — unified LLM proxy with cost tracking, multi-provider routing, and project management",
 	"keywords": [
 		"n8n-community-node-package",

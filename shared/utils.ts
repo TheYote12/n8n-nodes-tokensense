@@ -58,6 +58,11 @@ export function buildMetadata(
 		if (providerOverride && providerOverride !== 'auto') metadata.provider = providerOverride;
 	}
 
+	const step = context.getNode().name;
+	const executionId = context.getExecutionId();
+	if (step) metadata.step = step;
+	if (executionId) metadata.execution_id = executionId;
+
 	return metadata;
 }
 

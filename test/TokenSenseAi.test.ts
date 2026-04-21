@@ -125,6 +125,8 @@ describe('TokenSenseAi node', () => {
 				apiKey: 'test-secret-key',
 			}),
 			getWorkflow: () => ({ name: 'Test Workflow', id: '123', active: true }),
+			getNode: () => ({ name: 'Test Node', id: 'test-node-id', type: 'n8n-nodes-tokensense.tokenSenseAi', typeVersion: 1, position: [0, 0], parameters: {} }),
+			getExecutionId: () => 'exec-test-12345',
 			continueOnFail: () => false,
 			helpers: {
 				httpRequestWithAuthentication: mockFn,
@@ -260,6 +262,8 @@ describe('TokenSenseAi node', () => {
 					apiKey: 'test-secret-key',
 				}),
 				getWorkflow: () => ({ name: 'Test Workflow', id: '123', active: true }),
+				getNode: () => ({ name: 'Test Node', id: 'test-node-id', type: 'n8n-nodes-tokensense.tokenSenseAi', typeVersion: 1, position: [0, 0], parameters: {} }),
+				getExecutionId: () => 'exec-test-12345',
 				continueOnFail: () => false,
 				helpers: {
 					httpRequestWithAuthentication: function (

@@ -1,5 +1,6 @@
-import { normalizeBaseUrl } from '../shared/utils';
+import { normalizeBaseUrl, buildMetadata } from '../shared/utils';
 import { TokenSenseApi } from '../credentials/TokenSenseApi.credentials';
+import type { IExecuteFunctions } from 'n8n-workflow';
 
 describe('normalizeBaseUrl', () => {
 	it('leaves a clean bare origin unchanged', () => {
@@ -24,6 +25,55 @@ describe('normalizeBaseUrl', () => {
 
 	it('coerces non-strings and trims whitespace', () => {
 		expect(normalizeBaseUrl('  https://api.tokensense.io  ')).toBe('https://api.tokensense.io');
+	});
+});
+
+describe('buildMetadata', () => {
+	const buildMockContext = (overrides?: {
+		nodeName?: string;
+		executionId?: string;
+		workflowTag?: string;
+		project?: string;
+	}): IExecuteFunctions => {
+		return {
+			getNodeParameter: (name: string) => {
+				if (name === 'workflowTag') return overrides?.workflowTag ?? '';
+				if (name === 'project') return overrides?.project ?? '';
+				if (name === 'providerOverride') return 'auto';
+				return '';
+			},
+			getWorkflow: () => ({ name: 'Test Workflow', id: '123', active: true }),
+			getNode: () => ({
+				name: overrides?.nodeName ?? 'Classify Intent',
+				id: 'node-1',
+				type: 'n8n-nodes-tokensense.tokenSenseAi',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			}),
+			getExecutionId: () => overrides?.executionId ?? 'exec-abc-789',
+		} as unknown as IExecuteFunctions;
+	};
+
+	it('includes step from getNode().name', () => {
+		const ctx = buildMockContext({ nodeName: 'Classify Intent' });
+		const meta = buildMetadata(ctx, 0);
+		expect(meta.step).toBe('Classify Intent');
+	});
+
+	it('includes execution_id from getExecutionId()', () => {
+		const ctx = buildMockContext({ executionId: 'exec-abc-789' });
+		const meta = buildMetadata(ctx, 0);
+		expect(meta.execution_id).toBe('exec-abc-789');
+	});
+
+	it('includes source, workflow_tag, step, and execution_id together', () => {
+		const ctx = buildMockContext({ workflowTag: 'my-workflow', nodeName: 'Generate Summary' });
+		const meta = buildMetadata(ctx, 0);
+		expect(meta.source).toBe('n8n-nodes-tokensense');
+		expect(meta.workflow_tag).toBe('my-workflow');
+		expect(meta.step).toBe('Generate Summary');
+		expect(meta.execution_id).toBe('exec-abc-789');
 	});
 });
 
