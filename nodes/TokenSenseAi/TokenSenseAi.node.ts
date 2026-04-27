@@ -368,7 +368,7 @@ export class TokenSenseAi implements INodeType {
 				type: 'options',
 				default: 'claude-sonnet-4-5-20250929',
 				options: [
-					{ name: 'Claude Haiku 3.5', value: 'claude-haiku-3-5-20241022' },
+					{ name: 'Claude Haiku 3.5', value: 'claude-3-5-haiku-20241022' },
 					{ name: 'Claude Opus 4', value: 'claude-opus-4-20250514' },
 					{ name: 'Claude Sonnet 4.5', value: 'claude-sonnet-4-5-20250929' },
 				],

@@ -70,7 +70,7 @@ const DEFAULT_MODELS: INodePropertyOptions[] = [
 	{ name: 'GPT-4o', value: 'gpt-4o' },
 	{ name: 'GPT-4o Mini', value: 'gpt-4o-mini' },
 	{ name: 'Claude Sonnet 4.5', value: 'claude-sonnet-4-5-20250929' },
-	{ name: 'Claude Haiku 3.5', value: 'claude-haiku-3-5-20241022' },
+	{ name: 'Claude Haiku 3.5', value: 'claude-3-5-haiku-20241022' },
 	{ name: 'Gemini 2.0 Flash', value: 'gemini-2.0-flash' },
 	{ name: 'GPT-5.4', value: 'gpt-5.4' },
 ];
