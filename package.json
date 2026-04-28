@@ -1,6 +1,6 @@
 {
 	"name": "n8n-nodes-tokensense",
-	"version": "0.1.0-beta.3",
+	"version": "0.1.0",
 	"description": "n8n community node for TokenSense — unified LLM proxy with cost tracking, multi-provider routing, and project management",
 	"keywords": [
 		"n8n-community-node-package",
@@ -17,7 +17,7 @@
 	"license": "MIT",
 	"author": {
 		"name": "TokenSense",
-		"email": "TheYote12@users.noreply.github.com",
+		"email": "carlo@tokensense.io",
 		"url": "https://github.com/TheYote12"
 	},
 	"homepage": "https://github.com/TheYote12/n8n-nodes-tokensense",
