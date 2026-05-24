@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.1.5 — 2026-05-24
+
+### Metadata cleanup
+
+- **package.json:** Rewrite description to lead with benefit ("Track AI costs per workflow in n8n") instead of implementation detail
+- **package.json:** Remove `proxy` and `ai-gateway` keywords; replace with `cost-tracking` and `budget`
+- **No code changes** — metadata only
+
 ## v0.1.4 — 2026-05-06
 
 ### Docs
