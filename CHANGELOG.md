@@ -1,5 +1,24 @@
 # Changelog
 
+## v0.1.6 — 2026-05-27
+
+### n8n verification fixes
+
+- **package.json:** `peerDependencies.n8n-workflow` widened to `"*"` per n8n verification rules (host always provides a compatible version at runtime)
+- **package.json:** Removed `@n8n/ai-node-sdk` from `peerDependencies`; kept pinned in `devDependencies` for builds and typing. Host n8n bundles the SDK at runtime.
+- **TokenSenseAi.node.ts:** HTTP errors in `execute()` now surface via `NodeApiError` (with structured request/response context) instead of being re-thrown raw. Matches n8n UX guidelines.
+
+### URL polish
+
+- **package.json `homepage`:** Now points to `https://tokensense.io/integrations/n8n` (was the GitHub repo)
+- **`codex.resources.primaryDocumentation` on both shipped nodes:** Now points to `https://tokensense.io/docs/integrations/n8n/reference` (was the GitHub repo)
+- `repository.url` and `bugs.url` remain on GitHub — those are correct.
+
+### Hygiene
+
+- `.gitignore` now excludes `*.tgz`
+- Removed stray `n8n-nodes-tokensense-0.1.0-beta.2.tgz` test artifact from April
+
 ## v0.1.5 — 2026-05-24
 
 ### Metadata cleanup
