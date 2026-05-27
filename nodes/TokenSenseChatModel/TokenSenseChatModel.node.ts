@@ -22,7 +22,7 @@ export class TokenSenseChatModel implements INodeType {
 			categories: ['AI'],
 			subcategories: { AI: ['Language Models', 'Chat Models'] },
 			resources: {
-				primaryDocumentation: [{ url: 'https://github.com/TheYote12/n8n-nodes-tokensense' }],
+				primaryDocumentation: [{ url: 'https://tokensense.io/docs/integrations/n8n/reference' }],
 			},
 		},
 		inputs: [],

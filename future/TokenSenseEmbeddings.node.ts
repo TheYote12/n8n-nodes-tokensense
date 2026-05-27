@@ -28,7 +28,7 @@ export class TokenSenseEmbeddings implements INodeType {
 			categories: ['AI'],
 			subcategories: { AI: ['Embeddings'] },
 			resources: {
-				primaryDocumentation: [{ url: 'https://github.com/TheYote12/n8n-nodes-tokensense' }],
+				primaryDocumentation: [{ url: 'https://tokensense.io/docs/integrations/n8n/reference' }],
 			},
 		},
 		inputs: [],

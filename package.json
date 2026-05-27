@@ -20,7 +20,7 @@
 		"email": "carlo@tokensense.io",
 		"url": "https://github.com/TheYote12"
 	},
-	"homepage": "https://github.com/TheYote12/n8n-nodes-tokensense",
+	"homepage": "https://tokensense.io/integrations/n8n",
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/TheYote12/n8n-nodes-tokensense.git"
