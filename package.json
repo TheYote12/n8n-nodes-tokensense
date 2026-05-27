@@ -58,8 +58,7 @@
 	},
 	"dependencies": {},
 	"peerDependencies": {
-		"n8n-workflow": ">=2.13.0 <3.0.0",
-		"@n8n/ai-node-sdk": ">=0.7.0 <0.9.0"
+		"n8n-workflow": "*"
 	},
 	"devDependencies": {
 		"@n8n/ai-node-sdk": "0.7.0",
