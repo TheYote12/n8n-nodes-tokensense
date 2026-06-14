@@ -15,7 +15,7 @@ export class TokenSenseAi implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'TokenSense AI',
 		name: 'tokenSenseAi',
-		icon: 'file:../../icons/tokensense.svg',
+		icon: 'file:../../icons/tokensense.png',
 		group: ['transform'],
 		version: 1,
 		description: 'Call TokenSense for chat completions, embeddings, image generation, and more',

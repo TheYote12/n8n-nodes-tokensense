@@ -13,7 +13,7 @@ export class TokenSenseChatModel implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'TokenSense Chat Model',
 		name: 'tokenSenseChatModel',
-		icon: 'file:../../icons/tokensense.svg',
+		icon: 'file:../../icons/tokensense.png',
 		group: ['transform'],
 		version: 1,
 		description: 'Use TokenSense as a Chat Model in AI Agent workflows',

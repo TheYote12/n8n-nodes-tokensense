@@ -9,7 +9,7 @@ export class TokenSenseApi implements ICredentialType {
 	name = 'tokenSenseApi';
 	displayName = 'TokenSense API';
 	documentationUrl = 'https://tokensense.io/docs/integrations/n8n/setup';
-	icon = 'file:icons/tokensense.svg' as const;
+	icon = 'file:icons/tokensense.png' as const;
 
 	properties: INodeProperties[] = [
 		{
