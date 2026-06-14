@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.1.7 — 2026-06-15
+
+### Branding
+
+- **Icon:** Replaced the shield-"T" SVG with the new TokenSense orbit-mark PNG (transparent, square) across the TokenSense AI node, TokenSense Chat Model node, and TokenSense API credential
+
+### Docs
+
+- **README:** Refreshed example model names to current generation (Claude Opus 4.8, Gemini 3.5 Flash)
+- **README:** Replaced retired DALL-E 3 image example with Imagen 4 (DALL·E removed from OpenAI API May 2026)
+
 ## v0.1.6 — 2026-05-27
 
 ### n8n verification fixes
