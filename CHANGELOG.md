@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.1.8 — 2026-06-23
+
+### n8n verification (re-review fix)
+
+- **TokenSenseAi.node.ts:** Fixed invalid `codex` categorisation on the standalone node. A normal node (main→main) cannot use `categories: ['AI']` / `subcategories` — those are reserved for AI sub-nodes. Changed to `categories: ['Utility']` and removed `subcategories`. Resolves the 2026-06-18 manual-review block. The `TokenSense Chat Model` sub-node (a true `ai_languageModel` node) is unchanged. No behavioural change — `usableAsTool: true` still surfaces the node in the AI Tools list.
+
+### Docs
+
+- **README:** Refreshed example model names to current generation (Claude Opus 4.8, Gemini 3.5 Flash); replaced retired DALL-E 3 image example with Imagen 4.
+
 ## v0.1.6 — 2026-05-27
 
 ### n8n verification fixes
