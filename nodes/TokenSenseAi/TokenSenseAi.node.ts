@@ -22,8 +22,7 @@ export class TokenSenseAi implements INodeType {
 		defaults: { name: 'TokenSense AI' },
 		usableAsTool: true,
 		codex: {
-			categories: ['AI'],
-			subcategories: { AI: ['Language Models'] },
+			categories: ['Utility'],
 			resources: {
 				primaryDocumentation: [{ url: 'https://tokensense.io/docs/integrations/n8n/reference' }],
 			},

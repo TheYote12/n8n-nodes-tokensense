@@ -47,7 +47,7 @@ The **TokenSense AI** node is a standalone node for calling TokenSense directly 
 | Operation | Description |
 |-----------|-------------|
 | **Chat Completion** | Send messages to any chat model with optional JSON mode |
-| **Generate Image** | Create images with GPT Image 2, GPT Image 1, DALL-E 3, and more |
+| **Generate Image** | Create images with GPT Image 2, GPT Image 1, Imagen 4, and more |
 | **Create Embedding** | Generate vector embeddings for a text input |
 | **Text to Speech** | Convert text to audio (MP3, WAV, FLAC, and more) |
 | **Transcribe Audio** | Transcribe audio files using Whisper |
@@ -61,7 +61,7 @@ The TokenSense AI node has `usableAsTool: true`, so n8n automatically makes it a
 
 ## Compare providers without rewiring
 
-Testing GPT-5.5 vs Claude Opus 4.7 vs Gemini 3 Flash? Change the model dropdown — the credential, endpoint, and workflow stay the same. Cost and latency for each model appear side-by-side in your TokenSense Dashboard.
+Testing GPT-5.5 vs Claude Opus 4.8 vs Gemini 3.5 Flash? Change the model dropdown — the credential, endpoint, and workflow stay the same. Cost and latency for each model appear side-by-side in your TokenSense Dashboard.
 
 ## Features
 
