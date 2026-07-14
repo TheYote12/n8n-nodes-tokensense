@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.1.9 — 2026-07-15
+
+### n8n verification (re-review fix)
+
+- **Removed unregistered node file:** Deleted `future/TokenSenseEmbeddings.node.ts` and `future/TokenSenseEmbeddings.test.ts.bak`. The file was an unregistered `*.node.ts` (no entry in `package.json` `n8n.nodes`) that imported `@langchain/openai`, which is not a declared dependency — flagged as the required fix in n8n re-review. Work-in-progress embeddings code is preserved on the `wip/embeddings` branch. (Note: the file was never in the published npm tarball — `tsconfig` excluded `future/` and only `dist/` ships — so this is a repository cleanup, not a packaging change.)
+- **Singular resource value:** Renamed the `Model` resource `value: 'models'` → `'model'` in `TokenSenseAi.node.ts` (option definition + operation `displayOptions`), per n8n UX guidelines for singular resource values. Test assertion updated to match. No behavioural change to the List Models operation.
+
 ## v0.1.8 — 2026-06-23
 
 ### n8n verification (re-review fix)
