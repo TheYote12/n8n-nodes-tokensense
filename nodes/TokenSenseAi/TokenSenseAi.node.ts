@@ -43,7 +43,7 @@ export class TokenSenseAi implements INodeType {
 					{ name: 'Chat', value: 'chat', description: 'Chat completions and native provider APIs' },
 					{ name: 'Embedding', value: 'embedding', description: 'Create text embeddings' },
 					{ name: 'Image', value: 'image', description: 'Generate images from text' },
-					{ name: 'Model', value: 'models', description: 'List available models' },
+					{ name: 'Model', value: 'model', description: 'List available models' },
 				],
 			},
 
@@ -101,7 +101,7 @@ export class TokenSenseAi implements INodeType {
 				type: 'options',
 				noDataExpression: true,
 				default: 'listModels',
-				displayOptions: { show: { resource: ['models'] } },
+				displayOptions: { show: { resource: ['model'] } },
 				options: [
 					{ name: 'List Models', value: 'listModels', description: 'List all available models', action: 'List all available models' },
 				],

@@ -67,7 +67,7 @@ describe('TokenSenseAi node', () => {
 	it('defines 5 resources', () => {
 		const resourceProp = node.description.properties.find((p) => p.name === 'resource');
 		const values = ((resourceProp?.options as Array<{ value: string }>) ?? []).map((o) => o.value);
-		expect(values).toEqual(expect.arrayContaining(['chat', 'image', 'embedding', 'audio', 'models']));
+		expect(values).toEqual(expect.arrayContaining(['chat', 'image', 'embedding', 'audio', 'model']));
 		expect(values).toHaveLength(5);
 	});
 
