@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.1.10 — 2026-07-15
+
+### Release
+
+- **Republish with npm provenance.** No code changes from v0.1.9 — this release exists solely to publish through the GitHub Actions workflow (`npm publish --provenance` via OIDC), which attaches a signed npm provenance statement. n8n community-node verification now requires the submitted version to be published with provenance; v0.1.9 was published locally and therefore lacked it. All v0.1.9 fixes (removed unregistered embeddings node, singular `model` resource) carry forward unchanged.
+
 ## v0.1.9 — 2026-07-15
 
 ### n8n verification (re-review fix)
