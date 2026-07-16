@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.1.11 — 2026-07-16
+
+### n8n verification (re-review fix)
+
+Addresses the three required fixes plus the recommendation from n8n's re-review of v0.1.10:
+
+- **`pairedItem` on all output items (required).** Added `pairedItem: { item: i }` to all nine `returnData.push({...})` calls in `TokenSenseAi.node.ts` so n8n's execution UI can trace each output item back to its source input.
+- **`subtitle` on both nodes (required).** Added `subtitle: "={{$parameter.resource + ': ' + $parameter.operation}}"` to `TokenSenseAi` and `subtitle: 'Chat Model'` to `TokenSenseChatModel`.
+- **`NodeConnectionTypes` enum (required).** Replaced string literals with typed enum values: `inputs`/`outputs` now use `NodeConnectionTypes.Main` in `TokenSenseAi`, and `outputs` uses `NodeConnectionTypes.AiLanguageModel` in `TokenSenseChatModel`.
+- **Themed icon variants (recommended).** Both nodes now use `icon: { light, dark }` with new `tokensense-light.svg` (deep indigo→violet for light theme) and `tokensense-dark.svg` (brighter indigo→violet for dark theme). The credential icon is unchanged.
+
 ## v0.1.10 — 2026-07-15
 
 ### Release
