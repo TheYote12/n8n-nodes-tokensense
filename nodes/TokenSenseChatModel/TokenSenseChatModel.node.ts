@@ -6,6 +6,7 @@ import type {
 	ISupplyDataFunctions,
 	SupplyData,
 } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import { supplyModel } from '@n8n/ai-node-sdk';
 import { buildMetadata, loadModels, normalizeBaseUrl } from '../../shared/utils';
 
@@ -13,10 +14,11 @@ export class TokenSenseChatModel implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'TokenSense Chat Model',
 		name: 'tokenSenseChatModel',
-		icon: 'file:../../icons/tokensense.svg',
+		icon: { light: 'file:../../icons/tokensense-light.svg', dark: 'file:../../icons/tokensense-dark.svg' },
 		group: ['transform'],
 		version: 1,
 		description: 'Use TokenSense as a Chat Model in AI Agent workflows',
+		subtitle: 'Chat Model',
 		defaults: { name: 'TokenSense Chat Model' },
 		codex: {
 			categories: ['AI'],
@@ -26,7 +28,7 @@ export class TokenSenseChatModel implements INodeType {
 			},
 		},
 		inputs: [],
-		outputs: ['ai_languageModel'],
+		outputs: [NodeConnectionTypes.AiLanguageModel],
 		credentials: [{ name: 'tokenSenseApi', required: true }],
 		properties: [
 			{

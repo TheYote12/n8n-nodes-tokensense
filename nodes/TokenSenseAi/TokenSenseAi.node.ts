@@ -8,17 +8,18 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
 import { buildMetadata, loadModels, normalizeBaseUrl } from '../../shared/utils';
 
 export class TokenSenseAi implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'TokenSense AI',
 		name: 'tokenSenseAi',
-		icon: 'file:../../icons/tokensense.svg',
+		icon: { light: 'file:../../icons/tokensense-light.svg', dark: 'file:../../icons/tokensense-dark.svg' },
 		group: ['transform'],
 		version: 1,
 		description: 'Call TokenSense for chat completions, embeddings, image generation, and more',
+		subtitle: "={{$parameter.resource + ': ' + $parameter.operation}}",
 		defaults: { name: 'TokenSense AI' },
 		usableAsTool: true,
 		codex: {
@@ -27,8 +28,8 @@ export class TokenSenseAi implements INodeType {
 				primaryDocumentation: [{ url: 'https://tokensense.io/docs/integrations/n8n/reference' }],
 			},
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [{ name: 'tokenSenseApi', required: true }],
 		properties: [
 			// ── Resource selector ──
@@ -578,6 +579,7 @@ export class TokenSenseAi implements INodeType {
 					};
 
 					returnData.push({
+						pairedItem: { item: i },
 						json: {
 							content: responseBody.choices?.[0]?.message?.content ?? '',
 							role: responseBody.choices?.[0]?.message?.role ?? 'assistant',
@@ -618,6 +620,7 @@ export class TokenSenseAi implements INodeType {
 
 					const urls = (responseBody.data ?? []).map((img) => img.url ?? '');
 					returnData.push({
+						pairedItem: { item: i },
 						json: {
 							urls,
 							data: responseBody.data ?? [],
@@ -654,6 +657,7 @@ export class TokenSenseAi implements INodeType {
 					};
 
 					returnData.push({
+						pairedItem: { item: i },
 						json: {
 							embedding: responseBody.data?.[0]?.embedding ?? [],
 							model: responseBody.model ?? model,
@@ -708,6 +712,7 @@ export class TokenSenseAi implements INodeType {
 					const binaryData = await this.helpers.prepareBinaryData(buffer, fileName, mimeType);
 
 					returnData.push({
+						pairedItem: { item: i },
 						json: { success: true },
 						binary: { data: binaryData },
 					});
@@ -758,6 +763,7 @@ export class TokenSenseAi implements INodeType {
 					const text = typeof responseBody === 'string' ? responseBody : (responseBody.text ?? '');
 					const meta = typeof responseBody === 'string' ? undefined : responseBody.tokensense;
 					returnData.push({
+						pairedItem: { item: i },
 						json: {
 							text,
 							requestId: meta?.request_id ?? '',
@@ -802,6 +808,7 @@ export class TokenSenseAi implements INodeType {
 					};
 
 					returnData.push({
+						pairedItem: { item: i },
 						json: {
 							content: responseBody.content?.[0]?.text ?? '',
 							model: responseBody.model ?? model,
@@ -853,6 +860,7 @@ export class TokenSenseAi implements INodeType {
 					const responseHeaders = response.headers as Record<string, string>;
 
 					returnData.push({
+						pairedItem: { item: i },
 						json: {
 							content: responseBody.candidates?.[0]?.content?.parts?.[0]?.text ?? '',
 							usageMetadata: responseBody.usageMetadata ?? {},
@@ -877,6 +885,7 @@ export class TokenSenseAi implements INodeType {
 					};
 
 					returnData.push({
+						pairedItem: { item: i },
 						json: {
 							models: responseBody.data ?? [],
 						},
@@ -885,6 +894,7 @@ export class TokenSenseAi implements INodeType {
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({
+						pairedItem: { item: i },
 						json: { error: (error as Error).message },
 					});
 					continue;
