@@ -244,8 +244,8 @@ export class TokenSenseAi implements INodeType {
 				default: '1024x1024',
 				options: [
 					{ name: '1024x1024', value: '1024x1024' },
-					{ name: '1792x1024', value: '1792x1024' },
 					{ name: '1024x1792', value: '1024x1792' },
+					{ name: '1792x1024', value: '1792x1024' },
 				],
 				displayOptions: { show: { resource: ['image'], operation: ['generateImage'] } },
 			},
@@ -899,7 +899,7 @@ export class TokenSenseAi implements INodeType {
 					});
 					continue;
 				}
-				throw new NodeApiError(this.getNode(), error as JsonObject);
+				throw new NodeApiError(this.getNode(), error as JsonObject, { itemIndex: i });
 			}
 		}
 

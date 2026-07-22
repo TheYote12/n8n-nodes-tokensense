@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.1.12 — 2026-07-22
+
+### n8n verification (re-review fix)
+
+Addresses the two required fixes plus the recommendation from n8n's re-review of v0.1.11:
+
+- **`itemIndex` on `NodeApiError` (required).** `TokenSenseAi.node.ts` now throws `new NodeApiError(this.getNode(), error as JsonObject, { itemIndex: i })` inside the per-item loop, so n8n can associate a failure with the specific input item that triggered it.
+- **`@n8n/ai-node-sdk` declared as a peer dependency (required).** The `TokenSenseChatModel` sub-node imports `supplyModel` from `@n8n/ai-node-sdk` at runtime (the build externalises it — `dist` keeps the `require(...)`), but it was only listed under `devDependencies`. Added `"@n8n/ai-node-sdk": "*"` to `peerDependencies`, matching n8n's official ai-node-sdk README, so n8n supplies whatever SDK version it ships (currently 0.21.x) without unmet-peer warnings. The build target stays pinned at `0.7.0` in `devDependencies`.
+- **Alphabetised "Size" options (recommended).** Reordered the image Size dropdown to `1024x1024`, `1024x1792`, `1792x1024`. Display order only — default (`1024x1024`) and values unchanged.
+
 ## v0.1.11 — 2026-07-16
 
 ### n8n verification (re-review fix)
