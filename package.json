@@ -1,6 +1,6 @@
 {
 	"name": "n8n-nodes-tokensense",
-	"version": "0.1.12",
+	"version": "0.1.14",
 	"description": "Track AI costs per workflow in n8n. Budget caps, per-step attribution, and usage logs across OpenAI, Anthropic, Google, and more.",
 	"keywords": [
 		"n8n-community-node-package",
@@ -23,7 +23,7 @@
 	"homepage": "https://tokensense.io/integrations/n8n",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/TheYote12/n8n-nodes-tokensense.git"
+		"url": "git+https://github.com/TheYote12/n8n-nodes-tokensense.git"
 	},
 	"scripts": {
 		"build": "n8n-node build",
@@ -35,7 +35,9 @@
 		"prepublishOnly": "npm run lint && npm run build && npm test"
 	},
 	"files": [
-		"dist",
+		"dist/**/*.js",
+		"dist/**/*.js.map",
+		"dist/**/*.svg",
 		"icons",
 		"LICENSE",
 		"README.md"
@@ -45,6 +47,7 @@
 	},
 	"n8n": {
 		"n8nNodesApiVersion": 1,
+		"aiNodeSdkVersion": "0.7.0",
 		"nodes": [
 			"dist/nodes/TokenSenseAi/TokenSenseAi.node.js",
 			"dist/nodes/TokenSenseChatModel/TokenSenseChatModel.node.js"

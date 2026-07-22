@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.1.14 — 2026-07-23
+
+### n8n verification (provenance publish)
+
+- Re-publishes the `aiNodeSdkVersion` manifest fix via the GitHub Actions provenance workflow so n8n's community package scanner can verify npm provenance.
+
+## v0.1.13 — 2026-07-22
+
+### n8n verification (re-review fix)
+
+- **`aiNodeSdkVersion` in the `n8n` manifest block (required).** Added `"aiNodeSdkVersion": "0.7.0"` to the `n8n` object in `package.json`, alongside `n8nNodesApiVersion`. n8n uses this field to know which `@n8n/ai-node-sdk` version the `TokenSenseChatModel` sub-node was built against; the peer dependency stays `"*"` (per the SDK README) so the host still supplies the runtime copy.
+
 ## v0.1.12 — 2026-07-22
 
 ### n8n verification (re-review fix)
