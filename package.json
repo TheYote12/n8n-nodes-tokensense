@@ -1,6 +1,6 @@
 {
 	"name": "n8n-nodes-tokensense",
-	"version": "0.1.14",
+	"version": "0.1.15",
 	"description": "Track AI costs per workflow in n8n. Budget caps, per-step attribution, and usage logs across OpenAI, Anthropic, Google, and more.",
 	"keywords": [
 		"n8n-community-node-package",
@@ -47,7 +47,7 @@
 	},
 	"n8n": {
 		"n8nNodesApiVersion": 1,
-		"aiNodeSdkVersion": "0.7.0",
+		"aiNodeSdkVersion": 1,
 		"nodes": [
 			"dist/nodes/TokenSenseAi/TokenSenseAi.node.js",
 			"dist/nodes/TokenSenseChatModel/TokenSenseChatModel.node.js"

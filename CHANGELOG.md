@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.1.15 — 2026-07-23
+
+### n8n verification (scanner-compatible SDK manifest)
+
+- Changes `n8n.aiNodeSdkVersion` to the integer `1`, matching the current `@n8n/community-nodes/ai-node-package-json` scanner rule and `@n8n/node-cli` AI node templates.
+
 ## v0.1.14 — 2026-07-23
 
 ### n8n verification (provenance publish)
