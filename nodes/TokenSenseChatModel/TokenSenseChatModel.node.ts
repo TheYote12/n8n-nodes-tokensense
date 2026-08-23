@@ -9,6 +9,7 @@ import type {
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { supplyModel } from '@n8n/ai-node-sdk';
 import { buildMetadata, loadModels, normalizeBaseUrl } from '../../shared/utils';
+import { makeTokenSenseFailedAttemptHandler } from '../../shared/errors';
 
 export class TokenSenseChatModel implements INodeType {
 	description: INodeTypeDescription = {
@@ -122,6 +123,12 @@ export class TokenSenseChatModel implements INodeType {
 			streaming,
 			...(maxTokens > 0 ? { maxTokens } : {}),
 			additionalParams: { metadata },
+			// Keeps the TokenSense error envelope (error_class, retryable,
+			// retry_after_seconds) readable on the LangChain path, which never reaches
+			// TokenSenseAi's execute() catch block. See the handler for the known gap:
+			// this connection type has no JSON output, so the envelope survives as
+			// message + description text only, not as branchable $json.
+			onFailedAttempt: makeTokenSenseFailedAttemptHandler(() => this.getNode()),
 		});
 	}
 }

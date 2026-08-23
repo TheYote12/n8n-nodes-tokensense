@@ -1,4 +1,5 @@
 import type {
+	IDataObject,
 	IExecuteFunctions,
 	IHttpRequestOptions,
 	ILoadOptionsFunctions,
@@ -6,10 +7,14 @@ import type {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import { buildMetadata, loadModels, normalizeBaseUrl } from '../../shared/utils';
+import {
+	buildErrorOutput,
+	buildTokenSenseApiError,
+	extractTokenSenseErrorEnvelope,
+} from '../../shared/errors';
 
 export class TokenSenseAi implements INodeType {
 	description: INodeTypeDescription = {
@@ -892,14 +897,21 @@ export class TokenSenseAi implements INodeType {
 					});
 				}
 			} catch (error) {
+				const envelope = extractTokenSenseErrorEnvelope(error);
 				if (this.continueOnFail()) {
+					const structured = buildErrorOutput(error, envelope);
 					returnData.push({
 						pairedItem: { item: i },
-						json: { error: (error as Error).message },
+						json: {
+							// Structured so a workflow can branch on $json.error.error_class.
+							error: structured as unknown as IDataObject,
+							// Back-compat: $json.error used to be a bare message string.
+							errorMessage: structured.message,
+						},
 					});
 					continue;
 				}
-				throw new NodeApiError(this.getNode(), error as JsonObject, { itemIndex: i });
+				throw buildTokenSenseApiError(this.getNode(), error, { itemIndex: i });
 			}
 		}
 
