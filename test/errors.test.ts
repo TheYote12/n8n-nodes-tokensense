@@ -55,10 +55,12 @@ const ENVELOPE_503 = {
 };
 
 /** n8n `httpRequest` helper shape: body hangs off `error.response.body`. */
-const n8nHelperError = (status: number, envelope: Record<string, unknown>) =>
+const n8nHelperError = (status: number, envelope?: Record<string, unknown>) =>
 	Object.assign(new Error(`Request failed with status code ${status}`), {
 		statusCode: status,
-		response: { statusCode: status, body: { error: envelope } },
+		// Omitting the envelope models a gateway/proxy failure whose body carries no
+		// TokenSense error object (an HTML error page, an empty body, an older deploy).
+		response: { statusCode: status, body: envelope ? { error: envelope } : {} },
 	});
 
 /** Raw axios shape: body hangs off `error.response.data`. */
@@ -235,10 +237,33 @@ describe('buildTokenSenseApiError', () => {
 		expect(apiError.httpCode).toBe('402');
 	});
 
-	it('falls back to the raw message when there is no envelope', () => {
+	// Codex review (PR #24, P2): with no TokenSense envelope there is no message worth
+	// preserving, and overriding with the transport's text SUPPRESSES n8n's more
+	// actionable status message. Only defeat the canned map when it would bury a real
+	// TokenSense message.
+	it('preserves n8n\'s actionable status message when there is no envelope', () => {
+		const apiError = buildTokenSenseApiError(NODE, n8nHelperError(401), { itemIndex: 0 });
+		expect(apiError.message).toBe('Authorization failed - please check your credentials');
+		expect(apiError.message).not.toBe('Request failed with status code 401');
+		// n8n demotes the raw transport text to `description` — we add nothing of our own,
+		// so nothing of ours can bury it.
+		expect(apiError.description).toBe('Request failed with status code 401');
+		expect(apiError.httpCode).toBe('401');
+	});
+
+	it('preserves n8n\'s canned text for a transport error with no status', () => {
 		const apiError = buildTokenSenseApiError(NODE, new Error('socket hang up'), { itemIndex: 0 });
-		expect(apiError.message).toBe('socket hang up');
+		// No envelope and no status: we add nothing, so whatever NodeApiError decides stands.
 		expect(apiError.description).toBeUndefined();
+	});
+
+	it('still defeats the canned map when an envelope IS present', () => {
+		const apiError = buildTokenSenseApiError(NODE, n8nHelperError(401, {
+			code: 'INVALID_API_KEY',
+			message: 'Invalid or revoked TokenSense API key.',
+			type: 'authentication_error',
+		}), { itemIndex: 0 });
+		expect(apiError.message).toBe('Invalid or revoked TokenSense API key.');
 	});
 });
 

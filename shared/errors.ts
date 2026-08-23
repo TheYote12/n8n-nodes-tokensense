@@ -223,7 +223,12 @@ export function buildTokenSenseApiError(
 ): NodeApiError {
 	const envelope = extractTokenSenseErrorEnvelope(error);
 	const status = extractHttpStatus(error);
-	const message = envelope?.message ?? (error as Error)?.message;
+	// Only override `message` when TokenSense actually supplied one. With no envelope
+	// there is nothing better to say than n8n's own status message, and its canned text is
+	// OFTEN more actionable than the transport's ("Authorization failed - please check your
+	// credentials" beats "Request failed with status code 401"). The canned map is only a
+	// problem when it BURIES a TokenSense message — not when it stands in for a missing one.
+	const message = envelope?.message;
 	const description = buildErrorDescription(envelope);
 
 	const apiError = new NodeApiError(node, error as JsonObject, {
