@@ -70,8 +70,13 @@ const ENVELOPE_402_LEGACY = {
 const ENVELOPE_503 = {
 	code: 'BUDGET_CHECK_UNAVAILABLE',
 	error_class: 'budget_check_unavailable',
-	message: 'Budget ledger is temporarily unreachable; request was not billed',
-	type: 'infrastructure_error',
+	// Round 6: this said 'infrastructure_error' and a message the proxy has never
+	// sent. `type` was the one field the round-5 contract test asserted for the
+	// 402 and silently omitted for the 503 — so the wrong field was exactly the
+	// unasserted one, which is the same shape as the invented `error_class` that
+	// round 5 was written to eliminate.
+	message: 'Budget verification is temporarily unavailable. This is not a billing decision — retry shortly.',
+	type: 'service_unavailable',
 	retryable: true,
 	retry_after_seconds: 30,
 	scope: 'project',
@@ -641,6 +646,12 @@ describe('the wire contract shared with the proxy', () => {
 		expect(ENVELOPE_503.error_class).toBe('budget_check_unavailable');
 		expect(ENVELOPE_503.retryable).toBe(true);
 		expect(ENVELOPE_503.scope).toBe('project');
+		// Round 6: `type` was asserted for the 402 and omitted here, and the
+		// omitted field was the wrong one. Assert BOTH halves symmetrically.
+		expect(ENVELOPE_503.type).toBe('service_unavailable');
+		expect(ENVELOPE_503.message).toBe(
+			'Budget verification is temporarily unavailable. This is not a billing decision — retry shortly.',
+		);
 	});
 
 	it('code and error_class are distinct, so transposing them is visible', () => {
@@ -700,5 +711,71 @@ describe('a degenerate envelope message never wins over n8n\'s canned text', () 
 		// throw path correctly fell back — the same error, two different answers.
 		expect(output.message).toBeTruthy();
 		expect(output.message.trim()).not.toBe('');
+	});
+});
+
+describe('round 6: the classification names WHICH project, and survives a streamed error', () => {
+	it('project_id reaches the description and the continue-on-fail payload', () => {
+		// A workspace with several projects was told "a project budget was
+		// exceeded" and not which one. On the ChatModel path the description is
+		// the only channel, so that was unrecoverable.
+		const raw = axiosError(402, ENVELOPE_402);
+		const envelope = extractTokenSenseErrorEnvelope(raw);
+
+		expect(envelope?.project_id).toBe('proj-scene3d');
+		expect(buildErrorDescription(envelope)).toContain('project_id=proj-scene3d');
+	});
+
+	it('workflow_tag reaches the description on a workflow-cap block', () => {
+		const raw = axiosError(402, {
+			code: 'WORKFLOW_BUDGET_EXCEEDED',
+			error_class: 'budget_exceeded',
+			message: 'Monthly workflow budget exceeded.',
+			type: 'billing_error',
+			retryable: false,
+			scope: 'workflow',
+			workflow_tag: 'Scene3D D5d Reconciler',
+			budget_usd: 10,
+			spent_usd: 12,
+		});
+
+		expect(buildErrorDescription(extractTokenSenseErrorEnvelope(raw)))
+			.toContain('workflow_tag=Scene3D D5d Reconciler');
+	});
+
+	it('an envelope delivered with NO http status is still enriched', () => {
+		// The openai SDK throws `new APIError(undefined, data.error, …)` for an
+		// error inside an SSE body — `status` is hardcoded undefined and there is
+		// no `.response`. Streaming is this node's default, so requiring a status
+		// was one-sided in the same way the old `error_class` gate was.
+		const err = { name: 'APIError', status: undefined, error: ENVELOPE_402, retriesLeft: 0 };
+		let thrown: any;
+		try {
+			makeTokenSenseFailedAttemptHandler(() => NODE)(err);
+		} catch (e) { thrown = e; }
+
+		expect(thrown).toBeDefined();
+		expect(thrown.description).toContain('error_class=budget_exceeded');
+	});
+
+	it('a transport error with a code but neither a status nor our shape is still skipped', () => {
+		// The gate must stay closed to things that are not ours.
+		const err = Object.assign(new Error('connect ECONNREFUSED'), {
+			code: 'ECONNREFUSED', retriesLeft: 0,
+		});
+		expect(() => makeTokenSenseFailedAttemptHandler(() => NODE)({ error: err })).not.toThrow();
+	});
+
+	it('both paths emit the same message for a whitespace-padded one', () => {
+		// The two paths trimmed differently: buildErrorOutput used the trimmed
+		// string as the VALUE while the throw path emitted it untrimmed, so the
+		// same envelope produced two different messages depending on a toggle.
+		const padded = `  ${ENVELOPE_402.message}  `;
+		const raw = axiosError(402, { ...ENVELOPE_402, message: padded });
+
+		const thrown = buildTokenSenseApiError(NODE, raw, { itemIndex: 0 });
+		const output = buildErrorOutput(raw, extractTokenSenseErrorEnvelope(raw));
+
+		expect(output.message).toBe(thrown.message);
 	});
 });

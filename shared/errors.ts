@@ -16,6 +16,15 @@ export interface TokenSenseErrorEnvelope {
 	retryable?: boolean;
 	retry_after_seconds?: number | null;
 	scope?: string;
+	/**
+	 * Which project / workflow the classification is ABOUT. The proxy puts these
+	 * in the 402 (and, since round 6, the 503) via `errorExtra`. Round 6 found
+	 * the node dropped them: a workspace with several projects was told "a
+	 * project budget was exceeded" and not which one — and on the ChatModel path,
+	 * where the description is the only channel, that is unrecoverable.
+	 */
+	project_id?: string;
+	workflow_tag?: string;
 	budget_usd?: number | null;
 	spent_usd?: number | null;
 }
@@ -132,6 +141,8 @@ export function extractTokenSenseErrorEnvelope(
 				retryable: asOptionalBoolean(candidate.retryable),
 				retry_after_seconds: asOptionalNumber(candidate.retry_after_seconds) ?? null,
 				scope: asOptionalString(candidate.scope),
+				project_id: asOptionalString(candidate.project_id),
+				workflow_tag: asOptionalString(candidate.workflow_tag),
 				budget_usd: asOptionalNumber(candidate.budget_usd) ?? null,
 				spent_usd: asOptionalNumber(candidate.spent_usd) ?? null,
 			};
@@ -194,6 +205,8 @@ export function buildErrorDescription(envelope?: TokenSenseErrorEnvelope): strin
 		parts.push(`retry_after_seconds=${envelope.retry_after_seconds}`);
 	}
 	if (envelope.scope) parts.push(`scope=${envelope.scope}`);
+	if (envelope.project_id) parts.push(`project_id=${envelope.project_id}`);
+	if (envelope.workflow_tag) parts.push(`workflow_tag=${envelope.workflow_tag}`);
 	if (envelope.budget_usd !== null && envelope.budget_usd !== undefined) {
 		parts.push(`budget_usd=${envelope.budget_usd}`);
 	}
@@ -220,7 +233,9 @@ export function buildErrorOutput(
 		// already uses truthiness (`if (message)`), so `??` here meant the same
 		// error produced a useful message when thrown and an empty one under
 		// continueOnFail.
-		message: envelope?.message?.trim() || (error as Error)?.message || 'Unknown error',
+		message: envelope?.message?.trim()
+			? envelope.message
+			: (error as Error)?.message || 'Unknown error',
 		code: envelope?.code ?? null,
 		error_class: envelope?.error_class ?? null,
 		retryable: envelope?.retryable ?? null,
@@ -351,8 +366,17 @@ export function makeTokenSenseFailedAttemptHandler(
 		// has no status, and those carry a `code` too — so status is what
 		// separates "our structured error" from "the network broke", without
 		// depending on a field the node cannot enforce the proxy to send.
+		// Round 6: requiring a status was itself one-sided — the same shape as the
+		// `error_class` gate it replaced. The openai SDK throws
+		// `new APIError(undefined, data.error, …)` for an error delivered inside
+		// an SSE body, so a TokenSense envelope can arrive with NO extractable
+		// status, and streaming is this node's default. Accept EITHER signal: a
+		// status, or a field only our own envelope carries. A transport failure
+		// (ECONNREFUSED) has a `code` but neither.
 		if (!envelope) return;
-		if (extractHttpStatus(error) === undefined) return;
+		const hasStatus = extractHttpStatus(error) !== undefined;
+		const hasTokenSenseShape = Boolean(envelope.error_class || envelope.type);
+		if (!hasStatus && !hasTokenSenseShape) return;
 		if (!isTerminalAttempt(error)) return;
 		throw buildTokenSenseApiError(getNode(), error, { functionality: 'configuration-node' });
 	};
