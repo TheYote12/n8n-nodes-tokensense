@@ -169,8 +169,38 @@ export function extractHttpStatus(error: unknown, depth = 0): number | undefined
  * `error_class` visible in an execution log.
  */
 export function buildErrorDescription(envelope?: TokenSenseErrorEnvelope): string | undefined {
-	if (!envelope?.error_class) return undefined;
-	return `error_class=${envelope.error_class} · retryable=${envelope.retryable} · retry_after_seconds=${envelope.retry_after_seconds}`;
+	if (!envelope) return undefined;
+
+	// Round 5: this used to bail unless `error_class` was present, and to
+	// interpolate every field unconditionally. Both were wrong.
+	//
+	// The proxy set `error_class` ONLY on the 503 path — a 402 budget-exceeded
+	// envelope never carried it. So the one channel that survives on the
+	// ChatModel path was empty for exactly the errors this PR exists to surface,
+	// and `budget_usd`/`spent_usd` — the whole diagnostic value of a budget
+	// error — were never in it at all. (The proxy now sends `error_class` on
+	// both statuses; this stays tolerant so an older deployment still gets a
+	// useful description, and so the node does not depend on a field it cannot
+	// enforce.)
+	//
+	// Unconditional interpolation also produced literal `retryable=undefined`
+	// in customer-visible text, which reads as "not retryable" for an error that
+	// is. Absent fields are now omitted rather than rendered as `undefined`.
+	const parts: string[] = [];
+	if (envelope.error_class) parts.push(`error_class=${envelope.error_class}`);
+	else if (envelope.code) parts.push(`code=${envelope.code}`);
+	if (envelope.retryable !== undefined) parts.push(`retryable=${envelope.retryable}`);
+	if (envelope.retry_after_seconds !== null && envelope.retry_after_seconds !== undefined) {
+		parts.push(`retry_after_seconds=${envelope.retry_after_seconds}`);
+	}
+	if (envelope.scope) parts.push(`scope=${envelope.scope}`);
+	if (envelope.budget_usd !== null && envelope.budget_usd !== undefined) {
+		parts.push(`budget_usd=${envelope.budget_usd}`);
+	}
+	if (envelope.spent_usd !== null && envelope.spent_usd !== undefined) {
+		parts.push(`spent_usd=${envelope.spent_usd}`);
+	}
+	return parts.length > 0 ? parts.join(' · ') : undefined;
 }
 
 /**
@@ -185,7 +215,12 @@ export function buildErrorOutput(
 ): TokenSenseErrorOutput {
 	const status = extractHttpStatus(error);
 	const output: TokenSenseErrorOutput = {
-		message: envelope?.message ?? (error as Error)?.message ?? 'Unknown error',
+		// `||`, not `??`: an empty or whitespace-only envelope message must fall
+		// through to the raw error text, not blank the payload. The throw path
+		// already uses truthiness (`if (message)`), so `??` here meant the same
+		// error produced a useful message when thrown and an empty one under
+		// continueOnFail.
+		message: envelope?.message?.trim() || (error as Error)?.message || 'Unknown error',
 		code: envelope?.code ?? null,
 		error_class: envelope?.error_class ?? null,
 		retryable: envelope?.retryable ?? null,
@@ -228,7 +263,11 @@ export function buildTokenSenseApiError(
 	// OFTEN more actionable than the transport's ("Authorization failed - please check your
 	// credentials" beats "Request failed with status code 401"). The canned map is only a
 	// problem when it BURIES a TokenSense message — not when it stands in for a missing one.
-	const message = envelope?.message;
+	// Whitespace-only counts as "no message" (round 5). A message of '   ' is
+	// truthy, so it beat n8n's canned map and left the customer with a blank
+	// error title — the same "useless string beats the canned map" regression a
+	// prior review caught for the empty-string case, one space along.
+	const message = envelope?.message?.trim() ? envelope.message : undefined;
 	const description = buildErrorDescription(envelope);
 
 	const apiError = new NodeApiError(node, error as JsonObject, {
@@ -301,8 +340,19 @@ export function makeTokenSenseFailedAttemptHandler(
 ): (error: unknown) => void {
 	return (error: unknown) => {
 		const envelope = extractTokenSenseErrorEnvelope(error);
-		// Nothing TokenSense-specific to preserve — leave the SDK's behaviour alone.
-		if (!envelope?.error_class) return;
+		// Round 5: this used to require `error_class`, which the proxy sent only
+		// on the 503 path — so every genuine 402 was dropped here and the
+		// customer got n8n's canned "Payment required - perhaps check your
+		// payment details?". That is precisely the incident this PR pair exists
+		// to fix, reproduced on the ChatModel path for real budget errors.
+		//
+		// Gate on an HTTP status instead. A TokenSense envelope always arrives on
+		// an HTTP response; a transport failure (ECONNREFUSED, socket hang up)
+		// has no status, and those carry a `code` too — so status is what
+		// separates "our structured error" from "the network broke", without
+		// depending on a field the node cannot enforce the proxy to send.
+		if (!envelope) return;
+		if (extractHttpStatus(error) === undefined) return;
 		if (!isTerminalAttempt(error)) return;
 		throw buildTokenSenseApiError(getNode(), error, { functionality: 'configuration-node' });
 	};

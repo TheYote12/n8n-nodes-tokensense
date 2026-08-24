@@ -30,26 +30,51 @@ const NODE: INode = {
 	parameters: {},
 };
 
+// ⚠ THESE FIXTURES ARE THE PROXY'S REAL WIRE FORMAT. Round 5 found the previous
+// ones were fiction: they gave the 402 an `error_class`, which the proxy set
+// ONLY on the 503 path. Every test passed while the real 402 path was broken —
+// the ChatModel handler gated on `error_class` and dropped genuine 402s, and
+// `buildErrorDescription` returned undefined for them. The paired PRs were
+// never checked against each other.
+//
+// Keep these in step with `Proxy/errors.js` sendError + `Proxy/budgetReject.js`,
+// which now sends `error_class` on BOTH statuses. Pinned on the proxy side by
+// "the wire envelope both statuses must carry" in budget-endpoint.test.js.
+//
+// Deliberately ASYMMETRIC values: `code` differs from `error_class` and
+// `budget_usd` differs from `spent_usd`, so transposing either pair fails a
+// test. The old fixtures had them equal, so a swap was invisible — the same
+// defect the proxy suite had.
 const ENVELOPE_402 = {
-	code: 'budget_exceeded',
+	code: 'PROJECT_BUDGET_EXCEEDED',
 	error_class: 'budget_exceeded',
-	message: 'Budget exceeded for project scene3d: $50.00 of $50.00 cap spent',
+	message: 'Monthly project budget exceeded.',
 	type: 'billing_error',
 	retryable: false,
-	retry_after_seconds: null,
-	scope: 'project:scene3d',
-	budget_usd: 50,
-	spent_usd: 50,
+	scope: 'project',
+	project_id: 'proj-scene3d',
+	budget_usd: 47.3,
+	spent_usd: 50.12,
+};
+
+// An older proxy deployment: no `error_class`. The node must still surface it —
+// it cannot enforce which fields the server sends.
+const ENVELOPE_402_LEGACY = {
+	code: 'PROJECT_BUDGET_EXCEEDED',
+	message: 'Monthly project budget exceeded.',
+	type: 'billing_error',
+	budget_usd: 47.3,
+	spent_usd: 50.12,
 };
 
 const ENVELOPE_503 = {
-	code: 'budget_check_unavailable',
+	code: 'BUDGET_CHECK_UNAVAILABLE',
 	error_class: 'budget_check_unavailable',
 	message: 'Budget ledger is temporarily unreachable; request was not billed',
 	type: 'infrastructure_error',
 	retryable: true,
 	retry_after_seconds: 30,
-	scope: 'project:scene3d',
+	scope: 'project',
 	budget_usd: null,
 	spent_usd: null,
 };
@@ -114,7 +139,7 @@ describe('extractTokenSenseErrorEnvelope', () => {
 		const envelope = extractTokenSenseErrorEnvelope(n8nHelperError(402, ENVELOPE_402));
 		expect(envelope?.error_class).toBe('budget_exceeded');
 		expect(envelope?.retryable).toBe(false);
-		expect(envelope?.scope).toBe('project:scene3d');
+		expect(envelope?.scope).toBe('project');
 	});
 
 	it('reads the envelope from error.response.data.error (axios)', () => {
@@ -126,7 +151,9 @@ describe('extractTokenSenseErrorEnvelope', () => {
 	it('reads the envelope from error.error (openai SDK / request-promise)', () => {
 		const envelope = extractTokenSenseErrorEnvelope(openAiApiError(402, ENVELOPE_402));
 		expect(envelope?.error_class).toBe('budget_exceeded');
-		expect(envelope?.budget_usd).toBe(50);
+		expect(envelope?.budget_usd).toBe(47.3);
+		expect(envelope?.spent_usd).toBe(50.12);
+		expect(envelope?.code).toBe('PROJECT_BUDGET_EXCEEDED');
 	});
 
 	it('reads a doubly-nested envelope at error.error.error', () => {
@@ -169,7 +196,7 @@ describe('extractHttpStatus', () => {
 describe('buildErrorDescription', () => {
 	it('renders error_class, retryable and retry_after_seconds', () => {
 		expect(buildErrorDescription(extractTokenSenseErrorEnvelope(axiosError(503, ENVELOPE_503)))).toBe(
-			'error_class=budget_check_unavailable · retryable=true · retry_after_seconds=30',
+			'error_class=budget_check_unavailable · retryable=true · retry_after_seconds=30 · scope=project',
 		);
 	});
 
@@ -197,7 +224,7 @@ describe('buildTokenSenseApiError', () => {
 		expect(apiError.message).toBe(ENVELOPE_503.message);
 		expect(apiError.httpCode).toBe('503');
 		expect(apiError.description).toBe(
-			'error_class=budget_check_unavailable · retryable=true · retry_after_seconds=30',
+			'error_class=budget_check_unavailable · retryable=true · retry_after_seconds=30 · scope=project',
 		);
 	});
 
@@ -272,14 +299,14 @@ describe('buildErrorOutput', () => {
 		const error = n8nHelperError(402, ENVELOPE_402);
 		expect(buildErrorOutput(error, extractTokenSenseErrorEnvelope(error))).toEqual({
 			message: ENVELOPE_402.message,
-			code: 'budget_exceeded',
+			code: 'PROJECT_BUDGET_EXCEEDED',
 			error_class: 'budget_exceeded',
 			retryable: false,
 			retry_after_seconds: null,
 			http_status: 402,
-			scope: 'project:scene3d',
-			budget_usd: 50,
-			spent_usd: 50,
+			scope: 'project',
+			budget_usd: 47.3,
+			spent_usd: 50.12,
 		});
 	});
 
@@ -287,12 +314,12 @@ describe('buildErrorOutput', () => {
 		const error = axiosError(503, ENVELOPE_503);
 		expect(buildErrorOutput(error, extractTokenSenseErrorEnvelope(error))).toEqual({
 			message: ENVELOPE_503.message,
-			code: 'budget_check_unavailable',
+			code: 'BUDGET_CHECK_UNAVAILABLE',
 			error_class: 'budget_check_unavailable',
 			retryable: true,
 			retry_after_seconds: 30,
 			http_status: 503,
-			scope: 'project:scene3d',
+			scope: 'project',
 		});
 	});
 
@@ -327,7 +354,9 @@ describe('TokenSenseAi execute() — thrown path', () => {
 		expect(thrown.httpCode).toBe('402');
 		expect(thrown.description).toContain('error_class=budget_exceeded');
 		expect(thrown.description).toContain('retryable=false');
-		expect(thrown.description).toContain('retry_after_seconds=null');
+		expect(thrown.description).not.toContain('undefined');
+		expect(thrown.description).toContain('budget_usd=47.3');
+		expect(thrown.description).toContain('spent_usd=50.12');
 		expect(thrown.context.itemIndex).toBe(0);
 	});
 
@@ -361,7 +390,7 @@ describe('TokenSenseAi execute() — continue-on-fail path', () => {
 		expect(error.retryable).toBe(false);
 		expect(error.retry_after_seconds).toBeNull();
 		expect(error.http_status).toBe(402);
-		expect(error.scope).toBe('project:scene3d');
+		expect(error.scope).toBe('project');
 		expect(error.message).toBe(ENVELOPE_402.message);
 		expect(error.message).not.toBe(CANNED_402);
 		expect(output.pairedItem).toEqual({ item: 0 });
@@ -432,7 +461,9 @@ describe('chat-model path — onFailedAttempt handler', () => {
 		expect(thrown.httpCode).toBe('402');
 		expect(thrown.description).toContain('error_class=budget_exceeded');
 		expect(thrown.description).toContain('retryable=false');
-		expect(thrown.description).toContain('retry_after_seconds=null');
+		expect(thrown.description).not.toContain('undefined');
+		expect(thrown.description).toContain('budget_usd=47.3');
+		expect(thrown.description).toContain('spent_usd=50.12');
 	});
 
 	it('throws an enriched NodeApiError for an exhausted 503', () => {
@@ -535,5 +566,139 @@ describe('TokenSenseChatModel supplyData wiring', () => {
 
 		jest.dontMock('@n8n/ai-node-sdk');
 		jest.resetModules();
+	});
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Round 5. The node's first adversarial review. Everything here was uncovered.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('an envelope without error_class is still surfaced', () => {
+	// The proxy set `error_class` only on the 503 path until round 5, so this is
+	// what a real 402 looked like — and what an older deployment still sends.
+	// The node must not depend on a field it cannot make the server emit.
+
+	it('the ChatModel handler enriches a 402 that carries no error_class', () => {
+		const err = { ...openAiApiError(402, ENVELOPE_402_LEGACY), retriesLeft: 0 };
+		let thrown: any;
+		try {
+			makeTokenSenseFailedAttemptHandler(() => NODE)(err);
+		} catch (e) { thrown = e; }
+
+		// Before round 5 this returned silently and the customer saw
+		// "Payment required - perhaps check your payment details?" — the
+		// incident's own symptom, for a real budget error.
+		expect(thrown).toBeDefined();
+		expect(thrown.message).toBe(ENVELOPE_402_LEGACY.message);
+		expect(thrown.message).not.toBe(CANNED_402);
+	});
+
+	it('the description carries the budget numbers even with no error_class', () => {
+		const envelope = extractTokenSenseErrorEnvelope(axiosError(402, ENVELOPE_402_LEGACY));
+		const description = buildErrorDescription(envelope);
+
+		expect(description).toContain('code=PROJECT_BUDGET_EXCEEDED');
+		expect(description).toContain('budget_usd=47.3');
+		expect(description).toContain('spent_usd=50.12');
+	});
+
+	it('never renders a literal "undefined" into customer-visible text', () => {
+		// `retryable` is optional, and unconditional interpolation produced
+		// `retryable=undefined` — which reads as "not retryable" for an error
+		// that may well be.
+		const description = buildErrorDescription(
+			extractTokenSenseErrorEnvelope(axiosError(402, ENVELOPE_402_LEGACY)),
+		);
+		expect(description).not.toContain('undefined');
+	});
+
+	it('a transport error with a code but no HTTP status is left to the SDK', () => {
+		// ECONNREFUSED carries a `code`, so gating on "we found an envelope"
+		// alone would capture it. An HTTP status is what separates our
+		// structured error from the network breaking.
+		const err = Object.assign(new Error('connect ECONNREFUSED'), {
+			code: 'ECONNREFUSED', retriesLeft: 0,
+		});
+		expect(() => makeTokenSenseFailedAttemptHandler(() => NODE)({ error: err })).not.toThrow();
+	});
+});
+
+describe('the wire contract shared with the proxy', () => {
+	it('the 402 fixture matches what Proxy/budgetReject.js actually sends', () => {
+		// Pinned to LITERALS, not to a constant either side reads — the previous
+		// fixture invented an `error_class` the proxy never sent and nothing
+		// noticed. The proxy half is pinned by "the wire envelope both statuses
+		// must carry" in Proxy/budget-endpoint.test.js.
+		expect(ENVELOPE_402.code).toBe('PROJECT_BUDGET_EXCEEDED');
+		expect(ENVELOPE_402.error_class).toBe('budget_exceeded');
+		expect(ENVELOPE_402.type).toBe('billing_error');
+		expect(ENVELOPE_402.retryable).toBe(false);
+		expect(ENVELOPE_402.scope).toBe('project');
+	});
+
+	it('the 503 fixture matches what Proxy/budgetReject.js actually sends', () => {
+		expect(ENVELOPE_503.code).toBe('BUDGET_CHECK_UNAVAILABLE');
+		expect(ENVELOPE_503.error_class).toBe('budget_check_unavailable');
+		expect(ENVELOPE_503.retryable).toBe(true);
+		expect(ENVELOPE_503.scope).toBe('project');
+	});
+
+	it('code and error_class are distinct, so transposing them is visible', () => {
+		expect(ENVELOPE_402.code).not.toBe(ENVELOPE_402.error_class);
+		expect(ENVELOPE_503.code).not.toBe(ENVELOPE_503.error_class);
+	});
+
+	it('budget_usd and spent_usd are distinct, so transposing them is visible', () => {
+		expect(ENVELOPE_402.budget_usd).not.toBe(ENVELOPE_402.spent_usd);
+		expect(ENVELOPE_402.spent_usd).toBeGreaterThan(ENVELOPE_402.budget_usd);
+	});
+});
+
+describe('error.cause recursion', () => {
+	// Both extractors recurse through `cause`; neither recursion had any test.
+	// Replacing both with `return undefined` left the suite green.
+
+	it('follows error.cause to find a wrapped envelope', () => {
+		const inner = axiosError(402, ENVELOPE_402);
+		const outer = Object.assign(new Error('Connection error.'), { cause: inner });
+
+		expect(extractTokenSenseErrorEnvelope(outer)?.error_class).toBe('budget_exceeded');
+		expect(extractHttpStatus(outer)).toBe(402);
+	});
+
+	it('stops following cause past the depth cap rather than recursing forever', () => {
+		let e: unknown = axiosError(402, ENVELOPE_402);
+		for (let n = 0; n < 6; n++) e = Object.assign(new Error('wrap'), { cause: e });
+
+		expect(extractTokenSenseErrorEnvelope(e)).toBeUndefined();
+	});
+});
+
+describe('a degenerate envelope message never wins over n8n\'s canned text', () => {
+	it.each([
+		['empty string', ''],
+		['whitespace only', '   '],
+		['a tab and newline', '\t\n'],
+	])('%s falls back to the canned message', (_label, message) => {
+		const apiError = buildTokenSenseApiError(
+			NODE,
+			axiosError(402, { ...ENVELOPE_402, message }),
+			{ itemIndex: 0 },
+		);
+		// A blank error title is worse than the canned string it replaced.
+		expect(apiError.message).toBe(CANNED_402);
+	});
+
+	it.each([
+		['empty string', ''],
+		['whitespace only', '   '],
+	])('%s does not blank the continue-on-fail payload either', (_label, message) => {
+		const raw = axiosError(402, { ...ENVELOPE_402, message });
+		const output = buildErrorOutput(raw, extractTokenSenseErrorEnvelope(raw));
+
+		// `??` only guards nullish, so an empty string used to win here while the
+		// throw path correctly fell back — the same error, two different answers.
+		expect(output.message).toBeTruthy();
+		expect(output.message.trim()).not.toBe('');
 	});
 });
