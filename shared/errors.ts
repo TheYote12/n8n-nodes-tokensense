@@ -38,6 +38,8 @@ export interface TokenSenseErrorOutput {
 	retry_after_seconds: number | null;
 	http_status: number | null;
 	scope: string | null;
+	project_id?: string;
+	workflow_tag?: string;
 	budget_usd?: number | null;
 	spent_usd?: number | null;
 }
@@ -179,6 +181,18 @@ export function extractHttpStatus(error: unknown, depth = 0): number | undefined
  * description. n8n persists the description verbatim, so this is what makes
  * `error_class` visible in an execution log.
  */
+/**
+ * `workflow_tag` originates from customer-controlled `metadata.workflow_tag` /
+ * `x-workflow-tag` and is unbounded — the proxy's 64-char cap applies only to
+ * the AUTO-generated tag. This description is documented as a one-line summary
+ * and is persisted verbatim into every n8n execution log, so a newline would
+ * break the format and a multi-KB header value would be stored on every error.
+ */
+function oneLine(value: string, max = 120): string {
+	const flat = value.replace(/\s+/g, ' ').trim();
+	return flat.length > max ? `${flat.slice(0, max - 1)}…` : flat;
+}
+
 export function buildErrorDescription(envelope?: TokenSenseErrorEnvelope): string | undefined {
 	if (!envelope) return undefined;
 
@@ -205,8 +219,8 @@ export function buildErrorDescription(envelope?: TokenSenseErrorEnvelope): strin
 		parts.push(`retry_after_seconds=${envelope.retry_after_seconds}`);
 	}
 	if (envelope.scope) parts.push(`scope=${envelope.scope}`);
-	if (envelope.project_id) parts.push(`project_id=${envelope.project_id}`);
-	if (envelope.workflow_tag) parts.push(`workflow_tag=${envelope.workflow_tag}`);
+	if (envelope.project_id) parts.push(`project_id=${oneLine(envelope.project_id)}`);
+	if (envelope.workflow_tag) parts.push(`workflow_tag=${oneLine(envelope.workflow_tag)}`);
 	if (envelope.budget_usd !== null && envelope.budget_usd !== undefined) {
 		parts.push(`budget_usd=${envelope.budget_usd}`);
 	}
@@ -243,6 +257,12 @@ export function buildErrorOutput(
 		http_status: status ?? null,
 		scope: envelope?.scope ?? null,
 	};
+	// Round 7: the description carried project_id/workflow_tag but
+	// `buildErrorOutput` did not, so the fix reached the human-readable channel
+	// and not the machine-readable one — and `$json.error` is the channel the
+	// "so a workflow can branch on it" rationale is actually about.
+	if (envelope?.project_id) output.project_id = envelope.project_id;
+	if (envelope?.workflow_tag) output.workflow_tag = envelope.workflow_tag;
 	// Budget errors are the reason this envelope exists — carry the numbers when present.
 	if (envelope?.budget_usd !== undefined && envelope.budget_usd !== null) {
 		output.budget_usd = envelope.budget_usd;

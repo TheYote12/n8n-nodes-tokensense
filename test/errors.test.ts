@@ -310,6 +310,7 @@ describe('buildErrorOutput', () => {
 			retry_after_seconds: null,
 			http_status: 402,
 			scope: 'project',
+			project_id: 'proj-scene3d',
 			budget_usd: 47.3,
 			spent_usd: 50.12,
 		});
@@ -724,6 +725,12 @@ describe('round 6: the classification names WHICH project, and survives a stream
 
 		expect(envelope?.project_id).toBe('proj-scene3d');
 		expect(buildErrorDescription(envelope)).toContain('project_id=proj-scene3d');
+
+		// Round 7: this test NAMED the continue-on-fail payload and never checked
+		// it — and production did not implement it, with the `toEqual` above
+		// pinning the omission. The description is the human channel; `$json` is
+		// the one the "so a workflow can branch on it" rationale is about.
+		expect(buildErrorOutput(raw, envelope).project_id).toBe('proj-scene3d');
 	});
 
 	it('workflow_tag reaches the description on a workflow-cap block', () => {
@@ -777,5 +784,59 @@ describe('round 6: the classification names WHICH project, and survives a stream
 		const output = buildErrorOutput(raw, extractTokenSenseErrorEnvelope(raw));
 
 		expect(output.message).toBe(thrown.message);
+	});
+});
+
+describe('round 7: each half of the disjunctive gate is independently load-bearing', () => {
+	// The round-6 gate is `hasStatus || error_class || type`. Its only no-status
+	// test used ENVELOPE_402, which carries BOTH error_class and type — so
+	// deleting either disjunct left the suite green. The `type` half is the one
+	// that matters: the proxy sets `error_class` only from budgetReject, so every
+	// NON-budget code (INVALID_API_KEY, RATE_LIMITED, MODEL_NOT_FOUND,
+	// MISSING_PROVIDER_KEY, PROVIDER_ERROR, POLICY_BLOCKED) carries `type` and
+	// nothing else. Delivered in an SSE body they have no status either, and
+	// streaming is this node's default path.
+
+	it('a no-status envelope with type but NO error_class is still enriched', () => {
+		const err = {
+			name: 'APIError', status: undefined, retriesLeft: 0,
+			error: { code: 'INVALID_REQUEST', message: 'model is required', type: 'invalid_request_error' },
+		};
+		let thrown: any;
+		try { makeTokenSenseFailedAttemptHandler(() => NODE)(err); } catch (e) { thrown = e; }
+
+		expect(thrown).toBeDefined();
+		expect(thrown.message).toBe('model is required');
+	});
+
+	it('a no-status envelope with error_class but NO type is still enriched', () => {
+		const { type, ...noType } = ENVELOPE_402;
+		const err = { name: 'APIError', status: undefined, error: noType, retriesLeft: 0 };
+		let thrown: any;
+		try { makeTokenSenseFailedAttemptHandler(() => NODE)(err); } catch (e) { thrown = e; }
+
+		expect(thrown).toBeDefined();
+		expect(thrown.message).toBe(ENVELOPE_402.message);
+	});
+});
+
+describe('round 7: a customer-controlled tag cannot break or bloat the description', () => {
+	it('collapses newlines so the one-line contract holds', () => {
+		const raw = axiosError(402, { ...ENVELOPE_402, workflow_tag: 'Line one\nLine two' });
+		const description = buildErrorDescription(extractTokenSenseErrorEnvelope(raw));
+
+		expect(description).not.toContain('\n');
+		expect(description).toContain('workflow_tag=Line one Line two');
+	});
+
+	it('truncates an unbounded tag rather than logging it verbatim', () => {
+		// The proxy's 64-char cap applies only to the AUTO-generated tag; a
+		// customer-supplied x-workflow-tag header is unbounded and would be
+		// persisted into every n8n execution log.
+		const raw = axiosError(402, { ...ENVELOPE_402, workflow_tag: 'x'.repeat(5000) });
+		const description = buildErrorDescription(extractTokenSenseErrorEnvelope(raw));
+
+		expect(description!.length).toBeLessThan(400);
+		expect(description).toContain('…');
 	});
 });
