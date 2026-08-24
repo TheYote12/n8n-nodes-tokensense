@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Structured error envelope survives the node boundary
+
+- **`NodeApiError` no longer swallows the TokenSense error envelope.** `TokenSenseAi` now passes `message`, `description` and `httpCode` overrides when wrapping a failed request, so n8n's canned per-status strings (`"Payment required - perhaps check your payment details?"` for 402, `"Service unavailable - try again later ..."` for 503) no longer replace the real body. The envelope is parsed defensively from `error.response.body.error`, `error.response.data.error` and `error.error`, since the path varies by n8n version and transport.
+- **`continueOnFail()` emits a structured error.** `$json.error` is now an object — `{ message, code, error_class, retryable, retry_after_seconds, http_status, scope }`, plus `budget_usd`/`spent_usd` when the API sends them — so a workflow can branch on `$json.error.error_class`. It used to be a bare message string; that string is still available at `$json.errorMessage`.
+- **Chat-model path preserved too.** `TokenSenseChatModel` supplies the model via `supplyModel`, whose errors go through the LangChain agent rather than `execute()`. It now passes an `onFailedAttempt` hook that throws a pre-built `NodeApiError` on terminal attempts, which `@n8n/ai-node-sdk` returns verbatim. Retry behaviour is unchanged. Known gap: the `ai_languageModel` connection has no data output, so the envelope survives as message + description text only, not as branchable `$json`.
+
 ## v0.1.15 — 2026-07-23
 
 ### n8n verification (scanner-compatible SDK manifest)
