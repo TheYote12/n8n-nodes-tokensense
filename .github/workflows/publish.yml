@@ -13,14 +13,31 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     permissions:
+      # `id-token: write` is what mints the OIDC token npm Trusted Publishing
+      # exchanges for a short-lived publish credential. There is no NPM_TOKEN
+      # any more: the 2026-08-24 v0.1.18 attempt failed with `E404 PUT
+      # /n8n-nodes-tokensense` because the long-lived token had stopped being
+      # accepted, and npm answers 404 rather than 403 for an unauthenticated
+      # write to an existing package.
       contents: read
       id-token: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          # Trusted Publishing requires Node >= 22.14. '22.x' resolves to the
+          # latest 22 LTS, which is well past that; the audit step below prints
+          # the resolved version so the requirement is checkable per run.
+          node-version: '22.x'
           registry-url: 'https://registry.npmjs.org'
+      - name: Install npm CLI with Trusted Publishing support
+        # OIDC publishing landed in npm 11.5.1. Node 22 ships npm 10.x, so the
+        # bundled CLI cannot do this and must be upgraded explicitly.
+        run: npm install -g npm@^11.5.1
+      - name: Print toolchain versions
+        run: |
+          echo "node: $(node --version)"
+          echo "npm:  $(npm --version)"
       - run: npm ci
       - run: npm run build
       - run: npm test
@@ -42,12 +59,15 @@ jobs:
           fi
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+      # No NODE_AUTH_TOKEN: authentication is the OIDC exchange above.
+      # `--provenance` is redundant under Trusted Publishing, which attests
+      # automatically, but it is harmless and keeps the intent explicit.
       - run: npm publish --provenance --access public --tag ${{ steps.disttag.outputs.tag }}
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: Publish summary
         run: |
           echo "## Published n8n-nodes-tokensense@${{ steps.disttag.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo "- **dist-tag:** \`${{ steps.disttag.outputs.tag }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- **Install:** \`npm install n8n-nodes-tokensense@${{ steps.disttag.outputs.tag }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Auth:** npm Trusted Publishing (GitHub OIDC), no long-lived token" >> $GITHUB_STEP_SUMMARY
           echo "- **Provenance:** attested via GitHub OIDC" >> $GITHUB_STEP_SUMMARY
+          echo "- **node:** \`$(node --version)\` **npm:** \`$(npm --version)\`" >> $GITHUB_STEP_SUMMARY
