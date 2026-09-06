@@ -83,4 +83,4 @@ Testing GPT-5.5 vs Claude Opus 4.8 vs Gemini 3.5 Flash? Change the model dropdow
 
 ## License
 
-MIT
+MIT © 2026 LogicFox Ltd
