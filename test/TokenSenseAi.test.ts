@@ -262,6 +262,36 @@ describe('TokenSenseAi node', () => {
 			expect(captured.opts!.body).toMatchObject({ model: 'claude-sonnet-4-6', max_tokens: 1024, temperature: 0.3 });
 		});
 
+		it.each(['gpt-image-2', 'gpt-image-2.5-flare', 'gpt-image-2.5-sunburst'])('adapts saved Standard quality for %s and preserves image bytes/unknown cost', async (model) => {
+			const captured: { opts?: IHttpRequestOptions } = {};
+			const ctx = buildMockContext({ operation: 'generateImage', imageModel: model, imagePrompt: 'green',
+				imageSize: '1024x1024', imageQuality: 'standard', imageCount: 1 },
+				{ body: { data: [{ b64_json: 'image-bytes' }], tokensense: { cost_usd: null, pricing_available: false, billing: { reason: 'missing_usage' } } } }, captured);
+			const output = await node.execute.call(ctx);
+			expect(captured.opts!.body).toMatchObject({ model, quality: 'auto' });
+			expect(output[0][0].json).toMatchObject({ data: [{ b64_json: 'image-bytes' }], cost: '', pricingAvailable: false, billingReason: 'missing_usage' });
+		});
+
+		it.each(['gemini-3.1-flash-image', 'flux-3'])('omits unsupported quality for %s', async (model) => {
+			const captured: { opts?: IHttpRequestOptions } = {};
+			const ctx = buildMockContext({ operation: 'generateImage', imageModel: model, imagePrompt: 'green',
+				imageSize: '1024x1024', imageQuality: 'hd', imageCount: 1 }, { body: { data: [] } }, captured);
+			await node.execute.call(ctx);
+			expect(captured.opts!.body).not.toHaveProperty('quality');
+		});
+
+		it('Mini TTS preserves binary audio and explicit incomplete pricing', async () => {
+			const captured: { opts?: IHttpRequestOptions } = {};
+			const ctx = buildMockContext({ operation: 'textToSpeech', ttsModel: 'gpt-4o-mini-tts',
+				ttsInput: 'OK', ttsVoice: 'alloy', ttsFormat: 'wav', ttsSpeed: 1 },
+				{ body: new Uint8Array([1, 2, 3]).buffer, headers: { 'x-tokensense-pricing-complete': 'false',
+					'x-tokensense-pricing-reason': 'binary_audio_usage_unavailable', 'x-tokensense-cost-usd': 'unknown' } }, captured);
+			ctx.helpers.prepareBinaryData = async () => ({ data: 'AQID', mimeType: 'audio/wav', fileName: 'speech.wav' });
+			const output = await node.execute.call(ctx);
+			expect(output[0][0].json).toMatchObject({ success: true, pricingAvailable: false, billingReason: 'binary_audio_usage_unavailable' });
+			expect(output[0][0].binary?.data.data).toBe('AQID');
+		});
+
 		it('transcribeAudio uses n8n built-in multipart (no form-data package)', async () => {
 			const captured: { credentialName?: string; opts?: IHttpRequestOptions } = {};
 			const ctx = {

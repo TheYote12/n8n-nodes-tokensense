@@ -47,10 +47,10 @@ The **TokenSense AI** node is a standalone node for calling TokenSense directly 
 | Operation | Description |
 |-----------|-------------|
 | **Chat Completion** | Send messages to any chat model with optional JSON mode |
-| **Generate Image** | Create images with GPT Image 2, GPT Image 1, Imagen 4, and more |
+| **Generate Image** | Create images with GPT Image 2.5, Gemini image models, FLUX 3, and supported legacy models |
 | **Create Embedding** | Generate vector embeddings for a text input |
 | **Text to Speech** | Convert text to audio (MP3, WAV, FLAC, and more) |
-| **Transcribe Audio** | Transcribe audio files using Whisper |
+| **Transcribe Audio** | Transcribe audio files using GPT Transcribe, GPT-4o transcription, or Whisper |
 | **Native Anthropic** | Call the Anthropic Messages API directly |
 | **Native Gemini** | Call the Google Gemini API directly |
 | **List Models** | Fetch all models available in your TokenSense account |
@@ -88,3 +88,9 @@ GPT-6.1 Sol and GPT-6 Astra require Responses for tools; the Chat Model node use
 ## License
 
 MIT © 2026 LogicFox Ltd
+
+### Image and audio coverage (0.1.20)
+
+Generate Image preserves returned image bytes in `data[].b64_json`. GPT Image saved Standard/HD quality choices map to Auto/High; Gemini and FLUX 3 omit quality. Gemini images currently require square 1024x1024 and one image; FLUX 3 requires one image. Retired Imagen 4 choices are removed from new selections without rewriting saved workflows.
+
+Image/transcription outputs expose `pricingAvailable` and `billingReason`. Missing billable usage produces an empty cost, never a zero estimate. GPT transcription models require JSON output through this node. Mini TTS returns audio but its binary response does not expose billable token counts; pricing remains explicitly unavailable. Native Realtime is outside these operations.
