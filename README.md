@@ -4,7 +4,7 @@ n8n community node for [TokenSense](https://tokensense.io) — one API key for e
 
 ## What is TokenSense?
 
-TokenSense is an AI gateway for automation teams. Connect OpenAI, Anthropic, Google Gemini, xAI, and Mistral through a single endpoint. Every request is logged with cost, tokens, and latency — broken down by workflow, step, and execution. Set budget caps, and TokenSense enforces them before you overspend.
+TokenSense is an AI gateway for automation teams. Connect OpenAI, Anthropic, Google Gemini, xAI, Mistral, and Moonshot through a single endpoint. Every request is logged with cost, tokens, and latency — broken down by workflow, step, and execution. Set budget caps, and TokenSense enforces them before you overspend.
 
 Free tier available. Paid plans currently start from $29/month. TokenSense doesn't mark up provider rates.
 
@@ -61,7 +61,11 @@ The TokenSense AI node has `usableAsTool: true`, so n8n automatically makes it a
 
 ## Compare providers without rewiring
 
-Testing GPT-5.5 vs Claude Opus 4.8 vs Gemini 3.5 Flash? Change the model dropdown — the credential, endpoint, and workflow stay the same. Cost and latency for each model appear side-by-side in your TokenSense Dashboard.
+Testing GPT-6 Sol vs Claude Sonnet 5.5 vs Gemini 3.8 Flash? Change the model dropdown — the credential, endpoint, and workflow stay the same. Cost and latency for each model appear side-by-side in your TokenSense Dashboard.
+
+Current native Claude choices include Fable 5.1, Opus 5.5, and Sonnet 5.5. The node omits unsupported sampling settings and returns visible text even when thinking blocks come first. Your output limit includes thinking and remains unchanged on upgrade.
+
+GPT-6.1 Sol and GPT-6 Astra require Responses for tools; the Chat Model node uses Chat Completions. Use GPT-6 Sol/Luna or another compatible model for agents with tools. Model availability still depends on your provider account. Retired Gemini Flash-Lite Preview is removed from new choices; update saved workflows explicitly to stable `gemini-3.1-flash-lite` after checking compatibility.
 
 ## Features
 

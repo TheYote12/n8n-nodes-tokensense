@@ -1,6 +1,6 @@
-import { normalizeBaseUrl, buildMetadata } from '../shared/utils';
+import { normalizeBaseUrl, buildMetadata, loadModels } from '../shared/utils';
 import { TokenSenseApi } from '../credentials/TokenSenseApi.credentials';
-import type { IExecuteFunctions } from 'n8n-workflow';
+import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
 
 describe('normalizeBaseUrl', () => {
 	it('leaves a clean bare origin unchanged', () => {
@@ -108,5 +108,32 @@ describe('TokenSenseApi credential endpoint regex', () => {
 
 	it('rejects nested paths', () => {
 		expect(getRegex().test('https://api.tokensense.io/foo/v1')).toBe(false);
+	});
+});
+
+
+describe('model discovery', () => {
+	const context = (response?: unknown): ILoadOptionsFunctions => ({
+		getCredentials: async () => ({ endpoint: 'https://api.tokensense.io' }),
+		getNode: () => ({ name: 'TokenSense' }),
+		helpers: { httpRequestWithAuthentication: jest.fn(async () => {
+			if (!response) throw new Error('Feed unavailable');
+			return response;
+		}) },
+	} as unknown as ILoadOptionsFunctions);
+	it('falls back to current choices across every integrated chat provider', async () => {
+		const options = await loadModels.call(context());
+		const values = options.map((option) => option.value);
+		for (const id of ['gpt-6.1-sol', 'claude-sonnet-5-5', 'gemini-3.8-flash', 'grok-4.7', 'mistral-medium-3-5', 'kimi-k3']) expect(values).toContain(id);
+		expect(values).not.toContain('gemini-3.1-flash-lite-preview');
+	});
+	it('uses the fallback for an empty catalog and labels endpoint restrictions', async () => {
+		expect((await loadModels.call(context({ data: [] }))).length).toBeGreaterThan(0);
+		expect(await loadModels.call(context({ data: [{ id: 'gpt-6.1-sol' }] }))).toEqual([{ name: 'gpt-6.1-sol (tools require Responses)', value: 'gpt-6.1-sol' }]);
+	});
+	it('preserves API identifiers and custom embedding fallback', async () => {
+		expect(await loadModels.call(context({ data: [{ id: 'custom-current-model' }] }))).toEqual([{ name: 'custom-current-model', value: 'custom-current-model' }]);
+		const fallback = [{ name: 'Embed', value: 'text-embedding-3-small' }];
+		expect(await loadModels.call(context({ data: [{ id: 'chat-only' }] }), (id) => id.includes('embedding'), fallback)).toEqual(fallback);
 	});
 });

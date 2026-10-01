@@ -242,6 +242,26 @@ describe('TokenSenseAi node', () => {
 			expect(captured.opts!.url).toBe('/v1/messages');
 		});
 
+		it.each(['claude-fable-5-1', 'claude-opus-5-5', 'claude-sonnet-5-5'])('native %s omits sampling and returns text after thinking', async (model) => {
+			const captured: { opts?: IHttpRequestOptions } = {};
+			const ctx = buildMockContext({ operation: 'nativeAnthropic', anthropicModel: model,
+				anthropicUserMessage: 'hi', anthropicMaxTokens: 128, anthropicTemperature: 0.3 },
+				{ body: { content: [{ type: 'thinking', thinking: '' }, { type: 'text', text: 'hello' }, { type: 'text', text: ' world' }] } }, captured);
+			const output = await node.execute.call(ctx);
+			expect(captured.opts!.body).toMatchObject({ model, max_tokens: 128 });
+			expect(captured.opts!.body).not.toHaveProperty('temperature');
+			expect(output[0][0].json.content).toBe('hello world');
+		});
+
+		it('preserves saved legacy model and sampling without rewriting it', async () => {
+			const captured: { opts?: IHttpRequestOptions } = {};
+			const ctx = buildMockContext({ operation: 'nativeAnthropic', anthropicModel: 'claude-sonnet-4-6',
+				anthropicUserMessage: 'hi', anthropicMaxTokens: 1024, anthropicTemperature: 0.3 },
+				{ body: { content: [{ type: 'text', text: 'hello' }] } }, captured);
+			await node.execute.call(ctx);
+			expect(captured.opts!.body).toMatchObject({ model: 'claude-sonnet-4-6', max_tokens: 1024, temperature: 0.3 });
+		});
+
 		it('transcribeAudio uses n8n built-in multipart (no form-data package)', async () => {
 			const captured: { credentialName?: string; opts?: IHttpRequestOptions } = {};
 			const ctx = {

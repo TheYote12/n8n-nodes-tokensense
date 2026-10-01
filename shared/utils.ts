@@ -68,16 +68,22 @@ export function buildMetadata(
 }
 
 const DEFAULT_MODELS: INodePropertyOptions[] = [
-	{ name: 'GPT-5.5', value: 'gpt-5.5' },
-	{ name: 'GPT-5.4 Mini', value: 'gpt-5.4-mini' },
-	{ name: 'GPT-4.1', value: 'gpt-4.1' },
+	{ name: 'GPT-6.1 Sol (tools require Responses)', value: 'gpt-6.1-sol' },
+	{ name: 'GPT-6 Astra (tools require Responses)', value: 'gpt-6-astra' },
+	{ name: 'GPT-6 Sol', value: 'gpt-6-sol' },
+	{ name: 'GPT-6 Luna', value: 'gpt-6-luna' },
 	{ name: 'GPT-4.1 Mini', value: 'gpt-4.1-mini' },
-	{ name: 'Claude Opus 4.7', value: 'claude-opus-4-7' },
-	{ name: 'Claude Sonnet 4.6', value: 'claude-sonnet-4-6' },
+	{ name: 'Claude Fable 5.1', value: 'claude-fable-5-1' },
+	{ name: 'Claude Opus 5.5', value: 'claude-opus-5-5' },
+	{ name: 'Claude Sonnet 5.5', value: 'claude-sonnet-5-5' },
 	{ name: 'Claude Haiku 4.5', value: 'claude-haiku-4-5' },
-	{ name: 'Gemini 3 Flash Preview', value: 'gemini-3-flash-preview' },
+	{ name: 'Gemini 3.8 Flash', value: 'gemini-3.8-flash' },
+	{ name: 'Gemini 3.1 Flash-Lite', value: 'gemini-3.1-flash-lite' },
 	{ name: 'Gemini 3.1 Pro Preview', value: 'gemini-3.1-pro-preview' },
-	{ name: 'Gemini 2.5 Flash', value: 'gemini-2.5-flash' },
+	{ name: 'Grok 4.7', value: 'grok-4.7' },
+	{ name: 'Mistral Medium 3.5', value: 'mistral-medium-3-5' },
+	{ name: 'Mistral Small 4', value: 'mistral-small-2603' },
+	{ name: 'Kimi K3', value: 'kimi-k3' },
 ];
 
 /**
@@ -114,7 +120,11 @@ export async function loadModels(
 			);
 			models = filtered;
 		}
-		return models.map((m) => ({ name: m.id, value: m.id }));
+		if (models.length === 0) return fallback ?? DEFAULT_MODELS;
+		return models.map((m) => ({
+			name: ['gpt-6.1-sol', 'gpt-6-astra'].includes(m.id) ? `${m.id} (tools require Responses)` : m.id,
+			value: m.id,
+		}));
 	} catch {
 		return fallback ?? DEFAULT_MODELS;
 	}
