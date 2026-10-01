@@ -424,13 +424,15 @@ export class TokenSenseAi implements INodeType {
 				type: 'options',
 				default: 'claude-sonnet-4-6',
 				options: [
-					{ name: 'Claude Haiku 3.5', value: 'claude-3-5-haiku-20241022' },
+					{ name: 'Claude Fable 5.1', value: 'claude-fable-5-1' },
 					{ name: 'Claude Haiku 4.5', value: 'claude-haiku-4-5' },
 					{ name: 'Claude Opus 4.5', value: 'claude-opus-4-5' },
 					{ name: 'Claude Opus 4.6', value: 'claude-opus-4-6' },
 					{ name: 'Claude Opus 4.7', value: 'claude-opus-4-7' },
+					{ name: 'Claude Opus 5.5', value: 'claude-opus-5-5' },
 					{ name: 'Claude Sonnet 4.5', value: 'claude-sonnet-4-5' },
 					{ name: 'Claude Sonnet 4.6', value: 'claude-sonnet-4-6' },
+					{ name: 'Claude Sonnet 5.5', value: 'claude-sonnet-5-5' },
 				],
 				displayOptions: { show: { resource: ['chat'], operation: ['nativeAnthropic'] } },
 			},
@@ -459,7 +461,7 @@ export class TokenSenseAi implements INodeType {
 				type: 'number',
 				default: 1024,
 				required: true,
-				description: 'Maximum number of tokens to generate (required by Anthropic)',
+				description: 'Maximum generated tokens, including thinking. A small limit may be exhausted before visible text arrives.',
 				displayOptions: { show: { resource: ['chat'], operation: ['nativeAnthropic'] } },
 			},
 			{
@@ -468,7 +470,7 @@ export class TokenSenseAi implements INodeType {
 				type: 'number',
 				default: 1.0,
 				typeOptions: { minValue: 0, maxValue: 1, numberPrecision: 1 },
-				description: 'Controls randomness (0-1)',
+				description: 'Controls randomness (0-1). Omitted for current Claude models that fix sampling.',
 				displayOptions: { show: { resource: ['chat'], operation: ['nativeAnthropic'] } },
 			},
 
@@ -479,12 +481,14 @@ export class TokenSenseAi implements INodeType {
 				type: 'options',
 				default: 'gemini-3-flash-preview',
 				options: [
-					{ name: 'Gemini 2.5 Flash', value: 'gemini-2.5-flash' },       // retiring Jun 17
-					{ name: 'Gemini 2.5 Flash Lite', value: 'gemini-2.5-flash-lite' }, // retiring Jul 22
-					{ name: 'Gemini 2.5 Pro', value: 'gemini-2.5-pro' },          // retiring Jun 17
+					{ name: 'Gemini 2.5 Flash', value: 'gemini-2.5-flash' },
+					{ name: 'Gemini 2.5 Flash Lite', value: 'gemini-2.5-flash-lite' },
+					{ name: 'Gemini 2.5 Pro', value: 'gemini-2.5-pro' },
 					{ name: 'Gemini 3 Flash Preview', value: 'gemini-3-flash-preview' },
-					{ name: 'Gemini 3.1 Flash-Lite Preview', value: 'gemini-3.1-flash-lite-preview' },
+					{ name: 'Gemini 3.1 Flash-Lite', value: 'gemini-3.1-flash-lite' },
 					{ name: 'Gemini 3.1 Pro Preview', value: 'gemini-3.1-pro-preview' },
+					{ name: 'Gemini 3.5 Flash-Lite', value: 'gemini-3.5-flash-lite' },
+					{ name: 'Gemini 3.8 Flash', value: 'gemini-3.8-flash' },
 				],
 				displayOptions: { show: { resource: ['chat'], operation: ['nativeGemini'] } },
 			},
@@ -790,9 +794,12 @@ export class TokenSenseAi implements INodeType {
 						model,
 						max_tokens: maxTokens,
 						messages: [{ role: 'user', content: userMessage }],
-						temperature,
 						metadata,
 					};
+					// These exact current IDs fix sampling; preserve legacy model settings.
+					if (!['claude-fable-5-1', 'claude-opus-5-5', 'claude-sonnet-5-5', 'claude-opus-4-7'].includes(model)) {
+						body.temperature = temperature;
+					}
 					if (systemPrompt) body.system = systemPrompt;
 
 					const response = await authRequest({
@@ -815,7 +822,7 @@ export class TokenSenseAi implements INodeType {
 					returnData.push({
 						pairedItem: { item: i },
 						json: {
-							content: responseBody.content?.[0]?.text ?? '',
+							content: (responseBody.content ?? []).filter((block) => block.type === 'text').map((block) => block.text ?? '').join(''),
 							model: responseBody.model ?? model,
 							usage: responseBody.usage ?? {},
 							stopReason: responseBody.stop_reason ?? '',
