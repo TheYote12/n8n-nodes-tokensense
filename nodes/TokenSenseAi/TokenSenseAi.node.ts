@@ -8,7 +8,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import { buildMetadata, loadModels, normalizeBaseUrl } from '../../shared/utils';
 import {
 	buildErrorOutput,
@@ -232,13 +232,16 @@ export class TokenSenseAi implements INodeType {
 					{ name: 'Flux 2 Dev', value: 'flux-2-dev' },
 					{ name: 'Flux 2 Pro', value: 'flux-2-pro' },
 					{ name: 'Flux 2 Schnell', value: 'flux-2-schnell' },
+					{ name: 'Flux 3', value: 'flux-3' },
+					{ name: 'Gemini 3 Pro Image', value: 'gemini-3-pro-image' },
+					{ name: 'Gemini 3.1 Flash Image', value: 'gemini-3.1-flash-image' },
+					{ name: 'Gemini 3.1 Flash Image Lite', value: 'gemini-3.1-flash-lite-image' },
 					{ name: 'GPT Image 1', value: 'gpt-image-1' },
 					{ name: 'GPT Image 1 Mini', value: 'gpt-image-1-mini' },
 					{ name: 'GPT Image 1.5', value: 'gpt-image-1.5' },
 					{ name: 'GPT Image 2', value: 'gpt-image-2' },
-					{ name: 'Imagen 4', value: 'imagen-4' },
-					{ name: 'Imagen 4 Fast', value: 'imagen-4-fast' },
-					{ name: 'Imagen 4 Ultra', value: 'imagen-4-ultra' },
+					{ name: 'GPT Image 2.5 Flare', value: 'gpt-image-2.5-flare' },
+					{ name: 'GPT Image 2.5 Sunburst', value: 'gpt-image-2.5-sunburst' },
 				],
 				displayOptions: { show: { resource: ['image'], operation: ['generateImage'] } },
 			},
@@ -249,7 +252,9 @@ export class TokenSenseAi implements INodeType {
 				default: '1024x1024',
 				options: [
 					{ name: '1024x1024', value: '1024x1024' },
+					{ name: '1024x1536', value: '1024x1536' },
 					{ name: '1024x1792', value: '1024x1792' },
+					{ name: '1536x1024', value: '1536x1024' },
 					{ name: '1792x1024', value: '1792x1024' },
 				],
 				displayOptions: { show: { resource: ['image'], operation: ['generateImage'] } },
@@ -260,8 +265,14 @@ export class TokenSenseAi implements INodeType {
 				type: 'options',
 				default: 'standard',
 				options: [
+					{ name: 'Auto', value: 'auto' },
 					{ name: 'HD', value: 'hd' },
+					{ name: 'High', value: 'high' },
+					{ name: 'Low', value: 'low' },
+					{ name: 'Max (Image 2.5)', value: 'max' },
+					{ name: 'Medium', value: 'medium' },
 					{ name: 'Standard', value: 'standard' },
+					{ name: 'XHigh (Image 2.5)', value: 'xhigh' },
 				],
 				displayOptions: { show: { resource: ['image'], operation: ['generateImage'] } },
 			},
@@ -322,6 +333,7 @@ export class TokenSenseAi implements INodeType {
 				type: 'options',
 				default: 'tts-1',
 				options: [
+					{ name: 'GPT-4o Mini TTS', value: 'gpt-4o-mini-tts' },
 					{ name: 'TTS-1', value: 'tts-1' },
 					{ name: 'TTS-1 HD', value: 'tts-1-hd' },
 				],
@@ -390,7 +402,9 @@ export class TokenSenseAi implements INodeType {
 				default: 'whisper-1',
 				options: [
 					{ name: 'Whisper 1', value: 'whisper-1' },
-					{ name: 'Whisper 1 HD', value: 'whisper-1-hd' },
+					{ name: 'GPT Transcribe', value: 'gpt-transcribe' },
+					{ name: 'GPT-4o Transcribe', value: 'gpt-4o-transcribe' },
+					{ name: 'GPT-4o Mini Transcribe', value: 'gpt-4o-mini-transcribe' },
 				],
 				displayOptions: { show: { resource: ['audio'], operation: ['transcribeAudio'] } },
 			},
@@ -584,7 +598,7 @@ export class TokenSenseAi implements INodeType {
 						choices?: Array<{ message?: { content?: string; role?: string } }>;
 						model?: string;
 						usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
-						tokensense?: { request_id?: string; cost_usd?: number; model?: string; provider?: string; latency_ms?: number; tokens?: { prompt?: number; completion?: number; total?: number } };
+						tokensense?: { pricing_available?: boolean; billing?: { reason?: string | null }; request_id?: string; cost_usd?: number; model?: string; provider?: string; latency_ms?: number; tokens?: { prompt?: number; completion?: number; total?: number } };
 					};
 
 					returnData.push({
@@ -611,7 +625,13 @@ export class TokenSenseAi implements INodeType {
 
 					const metadata = buildMetadata(this, i, { includeProvider: true });
 
-					const body: Record<string, unknown> = { prompt, model, size, quality, n, metadata };
+					const body: Record<string, unknown> = { prompt, model, size, n, metadata };
+					// Gemini/FLUX3 have no quality parameter. Saved legacy GPT choices adapt explicitly.
+					if (!model.startsWith('gemini-') && model !== 'flux-3') {
+						body.quality = model.startsWith('gpt-image-')
+							? ({ standard: 'auto', hd: 'high' } as Record<string, string>)[quality] ?? quality
+							: quality;
+					}
 
 					const response = await authRequest({
 						method: 'POST',
@@ -623,8 +643,8 @@ export class TokenSenseAi implements INodeType {
 					});
 
 					const responseBody = response.body as {
-						data?: Array<{ url?: string; revised_prompt?: string }>;
-						tokensense?: { request_id?: string; cost_usd?: number; model?: string; provider?: string; latency_ms?: number; tokens?: { prompt?: number; completion?: number; total?: number } };
+						data?: Array<{ url?: string; b64_json?: string; revised_prompt?: string }>;
+						tokensense?: { pricing_available?: boolean; billing?: { reason?: string | null }; request_id?: string; cost_usd?: number; model?: string; provider?: string; latency_ms?: number; tokens?: { prompt?: number; completion?: number; total?: number } };
 					};
 
 					const urls = (responseBody.data ?? []).map((img) => img.url ?? '');
@@ -633,6 +653,8 @@ export class TokenSenseAi implements INodeType {
 						json: {
 							urls,
 							data: responseBody.data ?? [],
+							pricingAvailable: responseBody.tokensense?.pricing_available ?? null,
+							billingReason: responseBody.tokensense?.billing?.reason ?? null,
 							requestId: responseBody.tokensense?.request_id ?? '',
 							cost: String(responseBody.tokensense?.cost_usd ?? ''),
 							provider: responseBody.tokensense?.provider ?? '',
@@ -662,7 +684,7 @@ export class TokenSenseAi implements INodeType {
 						data?: Array<{ embedding?: number[] }>;
 						model?: string;
 						usage?: { prompt_tokens?: number; total_tokens?: number };
-						tokensense?: { request_id?: string; cost_usd?: number; model?: string; provider?: string; latency_ms?: number; tokens?: { prompt?: number; completion?: number; total?: number } };
+						tokensense?: { pricing_available?: boolean; billing?: { reason?: string | null }; request_id?: string; cost_usd?: number; model?: string; provider?: string; latency_ms?: number; tokens?: { prompt?: number; completion?: number; total?: number } };
 					};
 
 					returnData.push({
@@ -722,7 +744,14 @@ export class TokenSenseAi implements INodeType {
 
 					returnData.push({
 						pairedItem: { item: i },
-						json: { success: true },
+						json: {
+							success: true,
+							...(response.headers?.['x-tokensense-pricing-complete'] !== undefined ? {
+								pricingAvailable: response.headers['x-tokensense-pricing-complete'] === 'true',
+								billingReason: response.headers['x-tokensense-pricing-reason'] ?? null,
+								cost: response.headers['x-tokensense-cost-usd'] ?? '',
+							} : {}),
+						},
 						binary: { data: binaryData },
 					});
 				} else if (operation === 'transcribeAudio') {
@@ -730,6 +759,9 @@ export class TokenSenseAi implements INodeType {
 					const model = this.getNodeParameter('sttModel', i) as string;
 					const language = this.getNodeParameter('sttLanguage', i, '') as string;
 					const responseFormat = this.getNodeParameter('sttFormat', i) as string;
+					if (['gpt-transcribe', 'gpt-4o-transcribe', 'gpt-4o-mini-transcribe'].includes(model) && responseFormat !== 'json') {
+						throw new NodeOperationError(this.getNode(), 'Current GPT transcription models require JSON output through TokenSense. Select JSON in Response Format.', { itemIndex: i });
+					}
 					const binaryBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 					const binaryMeta = items[i].binary?.[binaryPropertyName];
 					const fileName = binaryMeta?.fileName ?? 'audio.wav';
@@ -766,7 +798,7 @@ export class TokenSenseAi implements INodeType {
 					// parsed body under .body. Test/TokenSenseAi.test.ts pins this
 					// contract for every op that sets returnFullResponse: true.
 					const responseBody = response.body as
-						| { text?: string; tokensense?: { request_id?: string; cost_usd?: number; model?: string; provider?: string; latency_ms?: number } }
+						| { text?: string; tokensense?: { pricing_available?: boolean; billing?: { reason?: string | null }; request_id?: string; cost_usd?: number; model?: string; provider?: string; latency_ms?: number } }
 						| string;
 
 					const text = typeof responseBody === 'string' ? responseBody : (responseBody.text ?? '');
@@ -775,6 +807,8 @@ export class TokenSenseAi implements INodeType {
 						pairedItem: { item: i },
 						json: {
 							text,
+							pricingAvailable: meta?.pricing_available ?? null,
+							billingReason: meta?.billing?.reason ?? null,
 							requestId: meta?.request_id ?? '',
 							cost: String(meta?.cost_usd ?? ''),
 							provider: meta?.provider ?? '',
@@ -816,7 +850,7 @@ export class TokenSenseAi implements INodeType {
 						model?: string;
 						usage?: { input_tokens?: number; output_tokens?: number };
 						stop_reason?: string;
-						tokensense?: { request_id?: string; cost_usd?: number; model?: string; provider?: string; latency_ms?: number; tokens?: { prompt?: number; completion?: number; total?: number } };
+						tokensense?: { pricing_available?: boolean; billing?: { reason?: string | null }; request_id?: string; cost_usd?: number; model?: string; provider?: string; latency_ms?: number; tokens?: { prompt?: number; completion?: number; total?: number } };
 					};
 
 					returnData.push({

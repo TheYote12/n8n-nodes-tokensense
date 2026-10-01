@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.20 — 2026-10-02
+
+- Adds GPT Image 2.5, current Gemini image models, FLUX 3, GPT Transcribe and Mini TTS choices. Removes retired Imagen 4 and unverified Whisper HD choices from new selections.
+- Adapts saved GPT image quality values, preserves base64 output, and exposes incomplete billing instead of presenting it as zero. Existing defaults and stored model IDs remain unchanged.
+
 ## Unreleased
 
 ### Structured error envelope survives the node boundary
