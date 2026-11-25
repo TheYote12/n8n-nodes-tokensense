@@ -124,12 +124,16 @@ describe('model discovery', () => {
 	it('falls back to current choices across every integrated chat provider', async () => {
 		const options = await loadModels.call(context());
 		const values = options.map((option) => option.value);
-		for (const id of ['gpt-6.1-sol', 'claude-sonnet-5-5', 'gemini-3.8-flash', 'grok-4.7', 'mistral-medium-3-5', 'kimi-k3']) expect(values).toContain(id);
+		for (const id of ['gpt-6.2-astra', 'gpt-6.2-sol', 'gpt-6.1-sol', 'claude-sonnet-5-5', 'gemini-3.8-flash', 'grok-4.7', 'mistral-medium-3-5', 'kimi-k3']) expect(values).toContain(id);
 		expect(values).not.toContain('gemini-3.1-flash-lite-preview');
 	});
 	it('uses the fallback for an empty catalog and labels endpoint restrictions', async () => {
 		expect((await loadModels.call(context({ data: [] }))).length).toBeGreaterThan(0);
-		expect(await loadModels.call(context({ data: [{ id: 'gpt-6.1-sol' }] }))).toEqual([{ name: 'gpt-6.1-sol (tools require Responses)', value: 'gpt-6.1-sol' }]);
+		const ids = ['gpt-6.2-astra', 'gpt-6.2-sol', 'gpt-6.1-sol'];
+		const dynamic = await loadModels.call(context({ data: ids.map((id) => ({ id })) }));
+		expect(dynamic).toEqual(ids.map((id) => ({ value: id, name: id + ' (tools require Responses)' })));
+		const fallback = await loadModels.call(context({ data: [] }));
+		for (const id of ids) expect(fallback.find((model) => model.value === id)?.name).toContain('tools require Responses');
 	});
 	it('preserves API identifiers and custom embedding fallback', async () => {
 		expect(await loadModels.call(context({ data: [{ id: 'custom-current-model' }] }))).toEqual([{ name: 'custom-current-model', value: 'custom-current-model' }]);

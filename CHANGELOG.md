@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.21 — 2026-11-25
+
+- Label GPT-6.2 Astra and Sol in the live and offline model lists. Their tool calls require the Responses API.
+
 ## 0.1.20 — 2026-10-02
 
 - Adds GPT Image 2.5, current Gemini image models, FLUX 3, GPT Transcribe and Mini TTS choices. Removes retired Imagen 4 and unverified Whisper HD choices from new selections.

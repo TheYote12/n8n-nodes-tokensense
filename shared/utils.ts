@@ -67,9 +67,18 @@ export function buildMetadata(
 	return metadata;
 }
 
+const RESPONSES_TOOL_MODELS = new Map([
+	['gpt-6.2-astra', 'GPT-6.2 Astra'],
+	['gpt-6.2-sol', 'GPT-6.2 Sol'],
+	['gpt-6.1-sol', 'GPT-6.1 Sol'],
+	['gpt-6-astra', 'GPT-6 Astra'],
+]);
+
 const DEFAULT_MODELS: INodePropertyOptions[] = [
-	{ name: 'GPT-6.1 Sol (tools require Responses)', value: 'gpt-6.1-sol' },
-	{ name: 'GPT-6 Astra (tools require Responses)', value: 'gpt-6-astra' },
+	...Array.from(RESPONSES_TOOL_MODELS, ([value, label]) => ({
+		name: label + ' (tools require Responses)',
+		value,
+	})),
 	{ name: 'GPT-6 Sol', value: 'gpt-6-sol' },
 	{ name: 'GPT-6 Luna', value: 'gpt-6-luna' },
 	{ name: 'GPT-4.1 Mini', value: 'gpt-4.1-mini' },
@@ -122,7 +131,7 @@ export async function loadModels(
 		}
 		if (models.length === 0) return fallback ?? DEFAULT_MODELS;
 		return models.map((m) => ({
-			name: ['gpt-6.1-sol', 'gpt-6-astra'].includes(m.id) ? `${m.id} (tools require Responses)` : m.id,
+			name: RESPONSES_TOOL_MODELS.has(m.id) ? `${m.id} (tools require Responses)` : m.id,
 			value: m.id,
 		}));
 	} catch {
