@@ -65,7 +65,7 @@ Testing GPT-6 Sol vs Claude Sonnet 5.5 vs Gemini 3.8 Flash? Change the model dro
 
 Current native Claude choices include Fable 5.1, Opus 5.5, and Sonnet 5.5. The node omits unsupported sampling settings and returns visible text even when thinking blocks come first. Your output limit includes thinking and remains unchanged on upgrade.
 
-GPT-6.1 Sol and GPT-6 Astra require Responses for tools; the Chat Model node uses Chat Completions. Use GPT-6 Sol/Luna or another compatible model for agents with tools. Model availability still depends on your provider account. Retired Gemini Flash-Lite Preview is removed from new choices; update saved workflows explicitly to stable `gemini-3.1-flash-lite` after checking compatibility.
+GPT-6.2 Astra, GPT-6.2 Sol, GPT-6.1 Sol and GPT-6 Astra require Responses for tools; the Chat Model node uses Chat Completions. Use GPT-6 Sol/Luna or another compatible model for agents with tools. Model availability still depends on your provider account. Retired Gemini Flash-Lite Preview is removed from new choices; update saved workflows explicitly to stable `gemini-3.1-flash-lite` after checking compatibility.
 
 ## Features
 
